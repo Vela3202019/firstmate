@@ -1326,16 +1326,13 @@ for CANDIDATE in C.UTF-8 C.utf8 en_US.UTF-8 en_US.utf8; do
 done
 [ -n "$UTF8_LOCALE" ] || fail "no UTF-8 locale is available for the byte-bound checks"
 perl -e 'print "queued\n", "\xc3\xa9" x 30' > "$STATE_CORPUS/job-x/state"
-( export LC_ALL="$UTF8_LOCALE"
-  state_rejects 'a multibyte tail within 65 characters but past 64 bytes' ) || exit 1
+( LC_ALL="$UTF8_LOCALE" state_rejects 'a multibyte tail within 65 characters but past 64 bytes' ) || exit 1
 printf '%s\n' "$REMOTE_HOME" > "$STATE_CORPUS/job-x/home"
-( export LC_ALL="$UTF8_LOCALE"
-  fm_remote_job_read_line "$STATE_CORPUS/job-x/home" 8192 HOME_VALUE \
+( LC_ALL="$UTF8_LOCALE" fm_remote_job_read_line "$STATE_CORPUS/job-x/home" 8192 HOME_VALUE \
     || fail 'a home record within its byte bound was rejected'
   [ "$HOME_VALUE" = "$REMOTE_HOME" ] || fail "the home record read '$HOME_VALUE'" ) || exit 1
 perl -e 'print $ARGV[0], "\n", "\xc3\xa9" x 4100' "$REMOTE_HOME" > "$STATE_CORPUS/job-x/home"
-( export LC_ALL="$UTF8_LOCALE"
-  if fm_remote_job_read_line "$STATE_CORPUS/job-x/home" 8192 HOME_VALUE 2>/dev/null; then
+( if LC_ALL="$UTF8_LOCALE" fm_remote_job_read_line "$STATE_CORPUS/job-x/home" 8192 HOME_VALUE 2>/dev/null; then
     fail 'a multibyte home record past its byte bound was accepted'
   fi ) || exit 1
 rm -f -- "$STATE_CORPUS/job-x/home"
