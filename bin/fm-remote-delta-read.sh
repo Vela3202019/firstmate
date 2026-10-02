@@ -10,12 +10,15 @@
 # the source. A shortened or changed prefix returns a structured continuity-break
 # result instead of silently rebasing the cursor.
 #
-# An unchanged snapshot is retried after FM_REMOTE_DELTA_POLL_SECONDS (default
-# 0.5 seconds). A complete line is visible on the next sample, and the window
-# deadline can overshoot by that interval plus snapshot and scheduling work.
-# Each sample stats the log once and re-runs the bounded capture and hashing
-# only when its size, subsecond mtime or ctime, inode, or device changed. The
-# wait remains an ordinary child sleep; signal handling is unchanged.
+# The log is sampled every FM_REMOTE_DELTA_POLL_SECONDS (default 0.5 seconds).
+# A complete line is visible on the next sample, and the window deadline can
+# overshoot by that interval plus snapshot and scheduling work.
+# Each sample of an existing log stats it once. The first sample always runs
+# the bounded capture and hashing; later samples skip that work only when the
+# size, subsecond mtime and ctime, inode, and device key is unchanged. If either
+# timestamp lacks a nonzero subsecond fraction, every sample captures the log
+# rather than trusting a coarse key that could hide a same-second rewrite.
+# The wait remains an ordinary child sleep; signal handling is unchanged.
 #
 # Exit 75 means the wait window closed with no complete line. SIGTERM exits the
 # same way after cleanup. The remote job worker preempts this read-only poll to
