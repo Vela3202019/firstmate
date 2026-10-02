@@ -14,8 +14,8 @@
 # 0.5 seconds). A complete line is visible on the next sample, and the window
 # deadline can overshoot by that interval plus snapshot and scheduling work.
 # Each sample stats the log once and re-runs the bounded capture and hashing
-# only when its size, mtime, ctime, inode, or device changed. The wait remains an
-# ordinary child sleep; signal handling is unchanged.
+# only when its size, subsecond mtime or ctime, inode, or device changed. The
+# wait remains an ordinary child sleep; signal handling is unchanged.
 #
 # Exit 75 means the wait window closed with no complete line. SIGTERM exits the
 # same way after cleanup. The remote job worker preempts this read-only poll to
@@ -49,8 +49,8 @@ copy_prefix() { # <file> <bytes> <destination>
   fi
 }
 
-snapshot_log() { # <file> <destination> <key-file>
-  local file=$1 destination=$2 key_file=$3 parent base actual_parent
+snapshot_log() { # <file> <destination> <size-file>
+  local file=$1 destination=$2 size_file=$3 parent base actual_parent
   parent=$(dirname "$file")
   base=$(basename "$file")
   (
@@ -58,7 +58,7 @@ snapshot_log() { # <file> <destination> <key-file>
     actual_parent=$(pwd -P) || exit 1
     [ "$actual_parent" = "$parent" ] || exit 1
     perl -MFcntl=:DEFAULT -e '
-      my ($path, $destination, $key_file, $offset, $max_bytes) = @ARGV;
+      my ($path, $destination, $size_file, $offset, $max_bytes) = @ARGV;
       sysopen(my $source, $path, O_RDONLY | O_NOFOLLOW) or exit 1;
       my @stat = stat $source or exit 1;
       exit 1 unless -f _;
@@ -79,21 +79,35 @@ snapshot_log() { # <file> <destination> <key-file>
         $remaining -= $read;
       }
       close $output or exit 1;
-      open(my $key_output, ">", $key_file) or exit 1;
-      print {$key_output} "$stat[7]:$stat[9]:$stat[10]:$stat[1]:$stat[0]\n" or exit 1;
-      close $key_output or exit 1;
-    ' "$base" "$destination" "$key_file" "$OFFSET" "$MAX_BYTES"
+      open(my $size_output, ">", $size_file) or exit 1;
+      print {$size_output} "$size\n" or exit 1;
+      close $size_output or exit 1;
+    ' "$base" "$destination" "$size_file" "$OFFSET" "$MAX_BYTES"
   )
 }
 
+delta_subsecond() { # <timestamp>: digits, one dot, and a nonzero fraction
+  case "$1" in *[!0-9.]* | *.*.*) return 1 ;; esac
+  case "$1" in [0-9]*.*[1-9]*) ;; *) return 1 ;; esac
+}
+
 # The file identity a snapshot was taken against: GNU and BSD stat spell the
-# fields differently, so the poll selects the syntax once by capability.
-delta_log_key() { # <file>: prints "size:mtime:ctime:inode:device" or nothing
+# fields differently, so the poll selects the syntax once by capability. The
+# mtime and ctime keep their subsecond fraction; a key without one (a stat or
+# filesystem with whole-second timestamps) is discarded, because it cannot tell
+# a same-second same-size rewrite apart, and that poll takes a full snapshot.
+delta_log_key() { # <file>: sets KEY to "size:mtime:ctime:inode:device" or empty
+  local rest mtime ctime
   if [ "$DELTA_KEY_GNU_STAT" = 1 ]; then
-    stat -c '%s:%Y:%Z:%i:%d' "$1" 2>/dev/null
+    KEY=$(stat -c '%s:%.9Y:%.9Z:%i:%d' "$1" 2>/dev/null) || KEY=
   else
-    stat -f '%z:%m:%c:%i:%d' "$1" 2>/dev/null
+    KEY=$(stat -f '%z:%Fm:%Fc:%i:%d' "$1" 2>/dev/null) || KEY=
   fi
+  rest=${KEY#*:}
+  mtime=${rest%%:*}
+  rest=${rest#*:}
+  ctime=${rest%%:*}
+  delta_subsecond "$mtime" && delta_subsecond "$ctime" || KEY=
 }
 
 resolve_log() { # <relative-path>
@@ -152,14 +166,15 @@ LAST_KEY=
 while :; do
   if [ -e "$LOG" ] || [ -L "$LOG" ]; then
     [ -f "$LOG" ] && [ ! -L "$LOG" ] || die "log changed into an unsafe file: $REL"
-    KEY=$(delta_log_key "$LOG" || true)
+    delta_log_key "$LOG"
     if [ -z "$KEY" ] || [ "$KEY" != "$LAST_KEY" ]; then
-      snapshot_log "$LOG" "$TMP/source" "$TMP/key" \
+      snapshot_log "$LOG" "$TMP/source" "$TMP/size" \
         || die "log could not be captured safely: $REL"
-      # The capture's own stat becomes the comparison key, so a log that moved
-      # between the gate stat and the snapshot is never mistaken for stable.
-      LAST_KEY=$(<"$TMP/key")
-      SIZE=${LAST_KEY%%:*}
+      # The gate stat precedes the capture, so the snapshot is at least as new
+      # as its key: a log that moved in between changes the key and is
+      # captured again on the next poll, never mistaken for stable.
+      LAST_KEY=$KEY
+      IFS= read -r SIZE < "$TMP/size"
       if [ "$SIZE" -lt "$OFFSET" ]; then
         copy_prefix "$TMP/source" "$SIZE" "$TMP/prefix"
         ACTUAL=$(sha256_file "$TMP/prefix")

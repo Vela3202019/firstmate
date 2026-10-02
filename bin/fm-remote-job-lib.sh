@@ -505,13 +505,14 @@ fm_remote_job_write_state() { # <job-dir> queued|running|done
 # tolerated unterminated tail, no carriage returns, and a non-empty value.
 # The -d '' -n <max+1> read treats NUL as the delimiter, so an ordinary
 # record (no NULs) is pulled whole at once: the read fails at end of file,
-# and success means either <max+1> characters landed (the file busts the
+# and success means either <max+1> bytes landed (the file busts the
 # bound) or a NUL stopped it early (already malformed). -N cannot do this:
-# the stock /bin/bash on macOS is 3.2, which has -n but no -N. Characters
-# count, not bytes, so multibyte content can exceed the byte bound by its
-# encoding width; staged records are ASCII paths and states.
+# the stock /bin/bash on macOS is 3.2, which has -n but no -N. The local
+# LC_ALL=C makes -n count bytes rather than multibyte characters, so the byte
+# bound holds in a UTF-8 locale.
 fm_remote_job_read_line() { # <file> <max-bytes> <result-variable>
   local file=$1 max=$2 result_var=$3 content
+  local LC_ALL=C
   [ -f "$file" ] && [ ! -L "$file" ] || return 1
   ! IFS= read -r -d '' -n "$((max + 1))" content < "$file" 2>/dev/null || return 1
   case "$content" in *$'\r'* | *$'\n'*$'\n'*) return 1 ;; esac

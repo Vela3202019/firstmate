@@ -753,6 +753,9 @@ worker_run_with_timeout() { # <job-dir> <seconds> <command> [args...]
 
 worker_preempting_waiter_exists() { # <lane-home>
   local lane_home=$1 job state command job_home field_terminated remaining chunk
+  # The argv byte bound counts with read -n and ${#...}, which count bytes only
+  # in the C locale.
+  local LC_ALL=C
   for job in "$FM_REMOTE_JOB_JOBS"/job-*; do
     [ -d "$job" ] && [ ! -L "$job" ] || continue
     fm_remote_job_read_state "$job" state 2>/dev/null || continue

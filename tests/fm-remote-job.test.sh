@@ -1318,6 +1318,29 @@ state_rejects 'a symlinked record'
 rm -f -- "$STATE_CORPUS/job-x/state" "$STATE_CORPUS/state-target"
 pass "the fork-free state read keeps every malformed-record rejection"
 
+# The record bounds are bytes, not characters: in a UTF-8 locale a multibyte
+# tail that fits the character count but busts the byte bound still rejects.
+UTF8_LOCALE=
+for CANDIDATE in C.UTF-8 C.utf8 en_US.UTF-8 en_US.utf8; do
+  if locale -a 2>/dev/null | grep -qx "$CANDIDATE"; then UTF8_LOCALE=$CANDIDATE; break; fi
+done
+[ -n "$UTF8_LOCALE" ] || fail "no UTF-8 locale is available for the byte-bound checks"
+perl -e 'print "queued\n", "\xc3\xa9" x 30' > "$STATE_CORPUS/job-x/state"
+( export LC_ALL="$UTF8_LOCALE"
+  state_rejects 'a multibyte tail within 65 characters but past 64 bytes' ) || exit 1
+printf '%s\n' "$REMOTE_HOME" > "$STATE_CORPUS/job-x/home"
+( export LC_ALL="$UTF8_LOCALE"
+  fm_remote_job_read_line "$STATE_CORPUS/job-x/home" 8192 HOME_VALUE \
+    || fail 'a home record within its byte bound was rejected'
+  [ "$HOME_VALUE" = "$REMOTE_HOME" ] || fail "the home record read '$HOME_VALUE'" ) || exit 1
+perl -e 'print $ARGV[0], "\n", "\xc3\xa9" x 4100' "$REMOTE_HOME" > "$STATE_CORPUS/job-x/home"
+( export LC_ALL="$UTF8_LOCALE"
+  if fm_remote_job_read_line "$STATE_CORPUS/job-x/home" 8192 HOME_VALUE 2>/dev/null; then
+    fail 'a multibyte home record past its byte bound was accepted'
+  fi ) || exit 1
+rm -f -- "$STATE_CORPUS/job-x/home"
+pass "the builtin record reads bound bytes, not characters, in a UTF-8 locale"
+
 # While a lane runs a preemptible long poll it scans staged queued jobs once a
 # second for a same-home waiter. The field reads must not exec: the scan used
 # to spend a pipeline per field per record per second, which the counting
@@ -1405,6 +1428,40 @@ done
 wait "$SCAN_LANE_PID" 2>/dev/null || true
 SCAN_LANE_PID=
 pass "a same-home queued command still preempts the poll through the builtin scan"
+
+# A queued poll whose argv busts the byte bound is not a valid poll, so it
+# preempts like any other waiter. Its multibyte field fits the bound in
+# characters, which the scan must not count in a UTF-8 locale. The earlier
+# fixture's queued same-home waiter is cancelled so only this record can
+# preempt.
+( FM_REMOTE_JOB_STATE_ROOT="$SCAN_STATE" fm_remote_job_cancel "$SCAN_ACCOUNT" "$SCAN_WAITER_ID" ) \
+  || fail "the earlier same-home waiter could not be cancelled"
+SCAN_BOUND_POLL_ID=$(scan_stage "$REMOTE_HOME" \
+  fm-remote-delta-read.sh "$REPLY_LOG_REL" 0 "$EMPTY_SHA" 20)
+SCAN_BOUND_SIBLING_ID=$(scan_stage "$REMOTE_HOME" \
+  fm-remote-delta-read.sh "$REPLY_LOG_REL" 0 "$EMPTY_SHA" 3)
+[ -n "$SCAN_BOUND_POLL_ID" ] && [ -n "$SCAN_BOUND_SIBLING_ID" ] \
+  || fail "the byte-bound scan fixture did not stage"
+perl -e 'print "fm-remote-delta-read.sh\0", "\xc3\xa9" x 2100, "\0"' \
+  > "$SCAN_STATE/jobs/$SCAN_BOUND_SIBLING_ID/argv"
+HOME="$SCAN_ACCOUNT" PATH="$QUIET_SHIM:/usr/bin:/bin:/usr/sbin:/sbin" \
+  FM_TEST_EXEC_LOG="$SCAN_EXEC_LOG" FM_ROOT_OVERRIDE="$REMOTE_ROOT" \
+  FM_REMOTE_JOB_STATE_ROOT="$SCAN_STATE" FM_REMOTE_JOB_PLATFORM_OVERRIDE=Linux \
+  FM_REMOTE_JOB_MAX_BYTES=4096 LC_ALL="$UTF8_LOCALE" \
+  "$REMOTE_ROOT/bin/fm-remote-job-worker.sh" --lane "$SCAN_BOUND_POLL_ID" \
+  > "$TMP_ROOT/scan-bound-lane.out" 2> "$TMP_ROOT/scan-bound-lane.err" &
+SCAN_LANE_PID=$!
+for _ in $(seq 1 200); do
+  [ "$(fm_remote_job_read_state "$SCAN_STATE/jobs/$SCAN_BOUND_POLL_ID" 2>/dev/null || true)" = 'done' ] && break
+  sleep 0.05
+done
+[ "$(fm_remote_job_read_state "$SCAN_STATE/jobs/$SCAN_BOUND_POLL_ID" 2>/dev/null || true)" = 'done' ] \
+  || fail "a queued poll with a multibyte argv past the byte bound did not preempt"
+[ "$(cat "$SCAN_STATE/jobs/$SCAN_BOUND_POLL_ID/exit")" -eq "$FM_REMOTE_JOB_PREEMPTED_EXIT" ] \
+  || fail "the byte-bound preemption did not publish the preemption exit"
+wait "$SCAN_LANE_PID" 2>/dev/null || true
+SCAN_LANE_PID=
+pass "the lane scan bounds argv in bytes, not characters, in a UTF-8 locale"
 
 # A child that stays up for FM_REMOTE_JOB_SUPERVISOR_HEALTHY_SECONDS clears the
 # consecutive-failure backoff, so a child that dies just past that threshold
