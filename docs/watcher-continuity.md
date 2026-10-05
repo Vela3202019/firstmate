@@ -233,7 +233,8 @@ A watcher close leaves an announced downtime episode announced, while a successf
 An announced handling episode becomes pending downtime on the same generation because its handling turn may have been interrupted.
 That handling republication gives a successor exactly one recovery presentation without orphaning the acknowledgement already printed for that generation.
 A watcher stopped so an arm can take its cycle over (`bin/fm-watch-arm.sh --take-over`) publishes downtime like any close, but the taking arm restores an acknowledged episode that stop reopened only when the taken-over arm's cycle-ledger row for that exact arm and watcher records the watcher ending by the take-over's TERM and no wake was appended in between.
-The taking arm waits within a short bound for that row; a missing row or any other signal leaves downtime for the fresh cycle's ordinary recovery wake, while take-over still proceeds.
+The taking arm waits within the take-over stop window for the watcher to exit: a TERM'd watcher blocked mid-poll (a bounded check, a pane capture) defers its exit until the foreground operation completes, so the window covers the watcher's check timeout plus margin (`FM_ARM_TAKE_OVER_STOP_BOUND`).
+It then waits within a short bound for that ledger row; a missing row or any other signal leaves downtime for the fresh cycle's ordinary recovery wake, while take-over still proceeds.
 Any other episode is left for the next cycle's arm check.
 
 ### What an acknowledgement retires

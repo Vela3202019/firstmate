@@ -76,7 +76,10 @@
 # arm would, and otherwise this arm owns a fresh cycle as a plain arm does.
 # Recovery restoration follows docs/watcher-continuity.md "Generation reuse";
 # an unconfirmed stop leaves downtime for the fresh cycle's recovery check.
-# Any other watcher, or one that outlives the stop,
+# The stop window is the watcher's check timeout plus margin
+# (FM_ARM_TAKE_OVER_STOP_BOUND), because a TERM'd watcher blocked mid-poll
+# defers its exit until the foreground operation completes.
+# Any other watcher, or one that outlives the stop window,
 # is attached to exactly as a plain arm attaches.
 #
 # --stop: the same home-scoped stop without re-arming, for an owner that ends
@@ -135,6 +138,17 @@ case "${OSTYPE:-}" in
   *) ARM_CONFIRM_DEFAULT=10 ;;
 esac
 CONFIRM_TIMEOUT=${FM_ARM_CONFIRM_TIMEOUT:-$ARM_CONFIRM_DEFAULT}
+# How long a --take-over may wait for the TERM'd watcher to exit. A watcher
+# blocked mid-poll defers its exit until the foreground operation completes
+# (a bounded check, a pane capture), so the stop wait must cover the slowest
+# legitimate poll block: the watcher's check timeout plus cleanup margin.
+# A stop abandoned too early never runs the handover restore, and the dying
+# watcher's own downtime publication then re-announces an acknowledged
+# episode to the next cycle.
+CHECK_TIMEOUT=${FM_CHECK_TIMEOUT:-30}
+case "$CHECK_TIMEOUT" in ''|*[!0-9]*|0) CHECK_TIMEOUT=30 ;; esac
+TAKE_OVER_STOP_BOUND=${FM_ARM_TAKE_OVER_STOP_BOUND:-$((CHECK_TIMEOUT + 10))}
+case "$TAKE_OVER_STOP_BOUND" in ''|*[!0-9]*|0) TAKE_OVER_STOP_BOUND=$((CHECK_TIMEOUT + 10)) ;; esac
 # Poll interval while attached to an existing healthy watcher.
 ATTACH_POLL=${FM_ARM_ATTACH_POLL:-0.5}
 # The beacon age at which the watcher's own re-arm evicts a live holder; an
@@ -552,18 +566,17 @@ fi
 # to exit (header, --take-over). Returns 3 after printing the reason that cycle
 # delivered before the stop landed, 0 once it stopped without delivering, and
 # 1 when it was not stopped (its handover state was unreadable, or it outlived
-# the stop), which leaves it to the plain attach below.
+# the stop window), which leaves it to the plain attach below.
 take_over_cycle() {  # <watcher-pid> <identity>
-  local pid=$1 i owner_signal
+  local pid=$1 i owner_signal deadline
   cycle_begin "$pid" attached "$2"
   fm_recovery_marker_handover_snapshot "$STATE/.watcher-down" || return 1
   if attached_holder_live "$pid"; then
     kill -TERM "$pid" 2>/dev/null || true
   fi
-  i=0
-  while [ "$i" -lt 50 ] && fm_pid_alive "$pid"; do
+  deadline=$((SECONDS + TAKE_OVER_STOP_BOUND))
+  while fm_pid_alive "$pid" && [ "$SECONDS" -lt "$deadline" ]; do
     sleep 0.1
-    i=$((i + 1))
   done
   if fm_pid_alive "$pid"; then
     return 1
