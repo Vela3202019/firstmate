@@ -880,11 +880,11 @@ _fm_recovery_marker_ack() {
 }
 
 _fm_recovery_marker_arm_check() {
-  local marker=$1 lock line quarantine
+  local marker=$1 bound=${2:-} lock line quarantine
   FM_RECOVERY_MARKER_ACTION='none'
   lock="${marker}.lock"
-  fm_lock_acquire_wait "$FM_WAKE_QUEUE_LOCK" || return 1
-  if ! fm_lock_acquire_wait "$lock"; then
+  _fm_recovery_lock_wait "$FM_WAKE_QUEUE_LOCK" "$bound" || return 1
+  if ! _fm_recovery_lock_wait "$lock" "$bound"; then
     fm_lock_release "$FM_WAKE_QUEUE_LOCK"
     return 1
   fi
@@ -956,10 +956,10 @@ _fm_recovery_marker_arm_check() {
 # Apply the owner-documented announced-episode arm transition atomically with
 # the queue read. Handling successors must not call this transition.
 _fm_recovery_marker_reopen_announced() {
-  local marker=$1 lock
+  local marker=$1 bound=${2:-} lock
   lock="${marker}.lock"
-  fm_lock_acquire_wait "$FM_WAKE_QUEUE_LOCK" || return 1
-  if ! fm_lock_acquire_wait "$lock"; then
+  _fm_recovery_lock_wait "$FM_WAKE_QUEUE_LOCK" "$bound" || return 1
+  if ! _fm_recovery_lock_wait "$lock" "$bound"; then
     fm_lock_release "$FM_WAKE_QUEUE_LOCK"
     return 1
   fi
@@ -1034,6 +1034,14 @@ _fm_recovery_marker_handover_restore() {
   return "$status"
 }
 
+_fm_recovery_lock_wait() {  # <lockdir> [max-seconds]
+  if [ -n "${2:-}" ]; then
+    fm_lock_acquire_wait_max "$1" "$2"
+  else
+    fm_lock_acquire_wait "$1"
+  fi
+}
+
 fm_recovery_transition() {
   local marker=$1 action=$2 target=${3:-} value=${4:-} bound=${5:-}
   case "$action" in
@@ -1047,10 +1055,10 @@ fm_recovery_transition() {
       _fm_recovery_marker_ack "$marker" "$target"
       ;;
     arm-check)
-      _fm_recovery_marker_arm_check "$marker"
+      _fm_recovery_marker_arm_check "$marker" "$bound"
       ;;
     reopen-announced)
-      _fm_recovery_marker_reopen_announced "$marker"
+      _fm_recovery_marker_reopen_announced "$marker" "$bound"
       ;;
     release-lock)
       [ -n "$target" ] || return 1
@@ -1093,12 +1101,12 @@ fm_recovery_marker_begin_handling() {
   _fm_recovery_marker_begin_handling "$1" "${2:-}"
 }
 
-fm_recovery_marker_arm_check() {
-  fm_recovery_transition "$1" arm-check
+fm_recovery_marker_arm_check() {  # <marker> [max-seconds]
+  fm_recovery_transition "$1" arm-check "" "" "${2:-}"
 }
 
-fm_recovery_marker_reopen_announced() {
-  fm_recovery_transition "$1" reopen-announced
+fm_recovery_marker_reopen_announced() {  # <marker> [max-seconds]
+  fm_recovery_transition "$1" reopen-announced "" "" "${2:-}"
 }
 
 fm_recovery_marker_handover_restore() {  # <marker> <snapshot-token> <snapshot-seq>

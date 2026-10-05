@@ -428,7 +428,7 @@ test_arm_confirms_a_watcher_blocked_on_the_wake_queue_lock() {
 
   PATH="$fakebin:$PATH" FM_HOME="$home" FM_STATE_OVERRIDE="$state" \
     FM_POLL=1 FM_SIGNAL_GRACE=0 FM_CHECK_INTERVAL=999999 FM_HEARTBEAT=999999 \
-    FM_GUARD_GRACE=3 FM_ARM_CONFIRM_TIMEOUT=2 "$WATCH_ARM" > "$armout" 2>&1 &
+    FM_GUARD_GRACE=3 FM_WATCHER_STALL_BOUND=60 FM_ARM_CONFIRM_TIMEOUT=2 "$WATCH_ARM" > "$armout" 2>&1 &
   ARM_PID=$!
   i=0
   while [ "$i" -lt 80 ]; do
@@ -445,7 +445,7 @@ test_arm_confirms_a_watcher_blocked_on_the_wake_queue_lock() {
   [ ! -e "$dir/release" ] && is_live_non_zombie "$holder" \
     || fail 'the wake-queue lock was released before the racing arm ran'
   PATH="$fakebin:$PATH" FM_HOME="$home" FM_STATE_OVERRIDE="$state" FM_ARM_ATTACH_POLL=0.1 \
-    FM_GUARD_GRACE=3 FM_ARM_CONFIRM_TIMEOUT=2 "$WATCH_ARM" > "$raceout" 2>&1 &
+    FM_GUARD_GRACE=3 FM_WATCHER_STALL_BOUND=60 FM_ARM_CONFIRM_TIMEOUT=2 "$WATCH_ARM" > "$raceout" 2>&1 &
   race_pid=$!
   i=0
   while [ "$i" -lt 80 ]; do
@@ -465,6 +465,61 @@ test_arm_confirms_a_watcher_blocked_on_the_wake_queue_lock() {
   wait_for_exit "$race_pid" 100 >/dev/null 2>&1 || true
   wait_for_exit "$ARM_PID" 100 >/dev/null 2>&1 || true
   pass "watch-arm: a watcher blocked at startup on the wake-queue lock is confirmed and attached, never refused as stale"
+}
+
+# The startup beat is not unconditional: a watcher still wedged behind a hung
+# wake-queue lock holder at the stall bound stops beating and refuses with its
+# stale lock evidence, so the home reads as unsupervised and a later arm can
+# replace it.
+test_wedged_startup_goes_stale_at_the_stall_bound() {
+  local dir home state fakebin holder out err pid status i before after
+  dir=$(make_case wedged-startup)
+  home="$dir/home"
+  state="$dir/state"
+  fakebin="$dir/fakebin"
+  out="$dir/watch.out"
+  err="$dir/watch.err"
+  mkdir -p "$home/data"
+  (
+    export FM_HOME="$home" FM_STATE_OVERRIDE="$state"
+    # shellcheck source=bin/fm-wake-lib.sh
+    . "$ROOT/bin/fm-wake-lib.sh"
+    fm_lock_try_acquire "$state/.wake-queue.lock" || exit 1
+    : > "$dir/holding"
+    i=0
+    while [ "$i" -lt 600 ] && [ ! -e "$dir/release" ]; do
+      sleep 0.1
+      i=$((i + 1))
+    done
+    fm_lock_release "$state/.wake-queue.lock" || true
+  ) &
+  holder=$!
+  i=0
+  while [ "$i" -lt 50 ] && [ ! -e "$dir/holding" ]; do
+    sleep 0.1
+    i=$((i + 1))
+  done
+  [ -e "$dir/holding" ] || fail 'lock holder did not take the wake-queue lock'
+
+  PATH="$fakebin:$PATH" FM_HOME="$home" FM_STATE_OVERRIDE="$state" \
+    FM_POLL=1 FM_SIGNAL_GRACE=0 FM_CHECK_INTERVAL=999999 FM_HEARTBEAT=999999 \
+    FM_WATCHER_STALL_BOUND=3 "$WATCH" > "$out" 2> "$err" &
+  pid=$!
+  wait_for_exit "$pid" 150
+  status=$?
+  [ -e "$dir/release" ] && fail 'the wake-queue lock was released before the startup bound'
+  expect_code 1 "$status" "a startup wedged past the stall bound must refuse"
+  grep -qF 'retaining stale lock evidence' "$err" \
+    || { : > "$dir/release"; fail "wedged startup did not refuse with its stale lock evidence: $(cat "$err")"; }
+  [ "$(cat "$state/.watch.lock/pid" 2>/dev/null || true)" = "$pid" ] \
+    || { : > "$dir/release"; fail 'wedged startup did not retain its lock evidence'; }
+  before=$(FM_STATE_OVERRIDE="$state" bash -c '. "$1"; fm_path_age "$2"' _ "$ROOT/bin/fm-wake-lib.sh" "$state/.last-watcher-beat")
+  sleep 2
+  after=$(FM_STATE_OVERRIDE="$state" bash -c '. "$1"; fm_path_age "$2"' _ "$ROOT/bin/fm-wake-lib.sh" "$state/.last-watcher-beat")
+  : > "$dir/release"
+  wait "$holder" 2>/dev/null || true
+  [ "$after" -gt "$before" ] || fail "the beacon kept advancing after the wedged startup refused ($before -> $after)"
+  pass "watch-arm: a startup wedged on the wake-queue lock past the stall bound stops beating and refuses"
 }
 
 test_rearm_resurfaces_durable_queue_and_remote_open_decision() {
@@ -1672,6 +1727,7 @@ test_attached_arm_still_fails_on_a_wake_it_did_not_deliver
 test_attached_arm_follows_a_slow_live_holder
 test_attached_arm_hands_a_stalled_holder_to_its_replacement
 test_arm_confirms_a_watcher_blocked_on_the_wake_queue_lock
+test_wedged_startup_goes_stale_at_the_stall_bound
 test_rearm_resurfaces_durable_queue_and_remote_open_decision
 test_slow_rearm_recovery_is_still_surfaced
 test_marker_publish_failure_retains_recovery_evidence
