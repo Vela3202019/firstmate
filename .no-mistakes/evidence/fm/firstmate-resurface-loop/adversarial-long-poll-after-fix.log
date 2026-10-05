@@ -1,0 +1,11 @@
+seed watcher=2663 FM_POLL=60
+watcher children: 3326 sleep 
+marker before take-over: acked:handling:3457.1791231235.qU7r2C
+take-over arm first report after 1s: watcher: started pid=4839 (beacon fresh)
+marker after take-over: acked:handling:3457.1791231235.qU7r2C
+arm output:
+  | watcher: started pid=4839 (beacon fresh)
+cycle-exit ledger:
+  | arm_pid=2640	watcher_pid=2663	origin=started	started_at=1791231231	ended_at=1791231236	exit_code=143	signal=TERM	reason=signal-exit	beacon_age=4	lock_before=pid:2663|identity:Mon Oct  5 13:13:51 2026     bash /Users/vela/.no-mistakes/worktrees/34bae1aacd62/01M46SSD3E20S4Q03EHRS0RRPP/bin/fm-watch.sh	lock_after=pid:none|identity:none	successor=none
+  | arm_pid=4266	watcher_pid=2663	origin=attached	started_at=1791231236	ended_at=1791231236	exit_code=unknown	signal=unknown	reason=taken-over	beacon_age=4	lock_before=pid:2663|identity:Mon Oct  5 13:13:51 2026     bash /Users/vela/.no-mistakes/worktrees/34bae1aacd62/01M46SSD3E20S4Q03EHRS0RRPP/bin/fm-watch.sh	lock_after=pid:none|identity:none	successor=started:4839
+ok - long FM_POLL=60 take-over during poll sleep keeps acknowledged episode retired, no resurface
