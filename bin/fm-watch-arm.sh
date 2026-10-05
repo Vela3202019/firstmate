@@ -76,9 +76,8 @@
 # arm would, and otherwise this arm owns a fresh cycle as a plain arm does.
 # Recovery restoration follows docs/watcher-continuity.md "Generation reuse";
 # an unconfirmed stop leaves downtime for the fresh cycle's recovery check.
-# The stop window is the watcher's check timeout plus margin
-# (FM_ARM_TAKE_OVER_STOP_BOUND), because a TERM'd watcher blocked mid-poll
-# defers its exit until the foreground operation completes.
+# The stop window is the watcher's poll interval plus margin, because a TERM'd
+# watcher defers its exit until its foreground poll sleep or pane capture ends.
 # Any other watcher, or one that outlives the stop window,
 # is attached to exactly as a plain arm attaches.
 #
@@ -139,16 +138,15 @@ case "${OSTYPE:-}" in
 esac
 CONFIRM_TIMEOUT=${FM_ARM_CONFIRM_TIMEOUT:-$ARM_CONFIRM_DEFAULT}
 # How long a --take-over may wait for the TERM'd watcher to exit. A watcher
-# blocked mid-poll defers its exit until the foreground operation completes
-# (a bounded check, a pane capture), so the stop wait must cover the slowest
-# legitimate poll block: the watcher's check timeout plus cleanup margin.
+# defers its exit until its foreground operation completes (the end-of-cycle
+# poll sleep or event wait, a pane capture), so the stop wait must cover the
+# watcher's poll interval plus margin for a slow capture and cleanup.
 # A stop abandoned too early never runs the handover restore, and the dying
 # watcher's own downtime publication then re-announces an acknowledged
 # episode to the next cycle.
-CHECK_TIMEOUT=${FM_CHECK_TIMEOUT:-30}
-case "$CHECK_TIMEOUT" in ''|*[!0-9]*|0) CHECK_TIMEOUT=30 ;; esac
-TAKE_OVER_STOP_BOUND=${FM_ARM_TAKE_OVER_STOP_BOUND:-$((CHECK_TIMEOUT + 10))}
-case "$TAKE_OVER_STOP_BOUND" in ''|*[!0-9]*|0) TAKE_OVER_STOP_BOUND=$((CHECK_TIMEOUT + 10)) ;; esac
+WATCH_POLL=${FM_POLL:-15}
+case "$WATCH_POLL" in ''|*[!0-9]*) WATCH_POLL=15 ;; esac
+TAKE_OVER_STOP_BOUND=$((WATCH_POLL + 25))
 # Poll interval while attached to an existing healthy watcher.
 ATTACH_POLL=${FM_ARM_ATTACH_POLL:-0.5}
 # The beacon age at which the watcher's own re-arm evicts a live holder; an
