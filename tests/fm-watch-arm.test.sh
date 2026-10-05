@@ -56,6 +56,7 @@ start_seed_watcher() {  # <state> <fakebin> <watch-out> [poll-seconds]
   i=0
   while [ "$i" -lt 60 ]; do
     [ "$(cat "$state/.watch.lock/pid" 2>/dev/null || true)" = "$SEED_PID" ] \
+      && [ -s "$state/.watch.lock/pid-identity" ] \
       && [ -e "$state/.last-watcher-beat" ] && break
     sleep 0.1
     i=$((i + 1))
