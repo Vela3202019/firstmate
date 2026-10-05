@@ -67,14 +67,12 @@
 # and is cut down to the watcher's own per-check bound (FM_CHECK_TIMEOUT,
 # default 30, read from the poll's environment because the watcher runs it as
 # a direct child) with a three-second margin. Every read, including one retry,
-# is capped at five seconds. A read killed at that bound, killed by a signal
-# (a status of 128+signal, which is how an outer bound such as the watcher's
-# per-check timeout ends the read), or refused at the deadline is budget
-# refusal; a killed retry retains the genuine failure that caused it.
-# HTTP 5xx, 429, secondary-rate-limit 403, connection, DNS and TLS failures are
-# retried once when that bound still has time. Other failures are reported
-# immediately, including a 404, which is how a lost login reads on a private
-# repository. A pull observation has three
+# is capped at five seconds. A first attempt killed at that bound or deadline
+# is budget refusal; a killed retry retains the genuine failure that caused
+# it. HTTP 5xx, 429, secondary-rate-limit 403, connection, DNS and TLS
+# failures are retried once when that bound still has time. Other failures
+# are reported immediately, including a 404, which is how a lost login reads
+# on a private repository. A pull observation has three
 # dependent waves: core, six independent reads (seven when FM_CONTRIBUTIONS_REPLY_AGE
 # is set), then the closing head read;
 # an issue has two waves. Before starting a URL, poll reserves the smaller of
@@ -353,11 +351,9 @@ forge() {
       rm -f -- "$out"
       return 0
     fi
-    # A kill at the read bound, a signal death (128+signal, how an outer
-    # bound such as the watcher's per-check timeout ends the read), or the
-    # deadline is budget refusal. If the retry times out, retain the genuine
-    # forge failure that caused that retry.
-    if [ "$rc" -eq 124 ] || [ "$rc" -gt 128 ]; then
+    # A kill at the read bound or the deadline is budget refusal. If the retry
+    # times out, retain the genuine forge failure that caused that retry.
+    if [ "$rc" -eq 124 ]; then
       forge_bound_result "$failed_rc" "$failed_why" "$rc"
       rm -f -- "$out"
       return "$FORGE_BOUND_RC"
