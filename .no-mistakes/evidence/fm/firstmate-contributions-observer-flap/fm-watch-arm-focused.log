@@ -1,0 +1,9 @@
+ok - watch-arm: a watcher blocked at startup on the wake-queue lock is confirmed and attached, never refused as stale
+ok - watch-arm: a startup wedged on the wake-queue lock past the stall bound stops beating and refuses
+ok - watch-arm: an attached arm keeps following a slow live holder and reports its wake
+/Users/vela/.no-mistakes/worktrees/34bae1aacd62/01M46TPTETNP6T9EVKX65R0TPX/tests/wake-helpers.sh: line 315: 56311 Terminated: 15          sleep 300
+ok - watch-arm: an attached arm hands a holder stalled past the bound to its owner's replacement
+ok - watch-arm: a watcher exits when its state directory is removed
+not ok - watcher pid 61264 outlived its deleted state directory
+FAILED test_watcher_exits_when_its_state_directory_is_removed
+ok - watch-arm: a watcher exits when its state directory is removed

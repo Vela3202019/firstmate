@@ -1,0 +1,19 @@
+--- state-dir run 1
+ok - watch-arm: a watcher exits when its state directory is removed
+--- state-dir run 2
+ok - watch-arm: a watcher exits when its state directory is removed
+--- state-dir run 3
+ok - watch-arm: a watcher exits when its state directory is removed
+--- state-dir run 4
+ok - watch-arm: a watcher exits when its state directory is removed
+--- state-dir run 5
+ok - watch-arm: a watcher exits when its state directory is removed
+--- state-dir run 6
+ok - watch-arm: a watcher exits when its state directory is removed
+--- state-dir run 7
+ok - watch-arm: a watcher exits when its state directory is removed
+--- state-dir run 8
+ok - watch-arm: a watcher exits when its state directory is removed
+ok - watch-arm: a watcher exits when its home is removed
+ok - watch-arm: a watcher blocked at startup on the wake-queue lock is confirmed and attached, never refused as stale
+ok - watch-arm: a startup wedged on the wake-queue lock past the stall bound stops beating and refuses

@@ -1,0 +1,7 @@
+##### BASE
+run 1: watcher exited; arm said: watcher: started pid=80906 (beacon fresh)|watcher: exiting - state directory no longer exists: <state>|watcher: FAILED - watcher cycle exited 1 without an actionable reason|
+run 2: watcher exited; arm said: watcher: started pid=82165 (beacon fresh)|watcher: exiting - state directory no longer exists: <state>|watcher: FAILED - watcher cycle exited 1 without an actionable reason|
+run 3: watcher exited; arm said: watcher: started pid=83408 (beacon fresh)|watcher: exiting - state directory no longer exists: <state>|watcher: FAILED - watcher cycle exited 1 without an actionable reason|
+run 4: watcher exited; arm said: watcher: started pid=84621 (beacon fresh)|watcher: exiting - state directory no longer exists: <state>|watcher: FAILED - watcher cycle exited 1 without an actionable reason|
+run 5: watcher exited; arm said: watcher: started pid=86701 (beacon fresh)|watcher: exiting - state directory no longer exists: <state>|watcher: FAILED - watcher cycle exited 1 without an actionable reason|
+run 6: watcher exited; arm said: watcher: started pid=87972 (beacon fresh)|watcher: exiting - state directory no longer exists: <state>|watcher: FAILED - watcher cycle exited 1 without an actionable reason|

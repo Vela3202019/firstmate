@@ -1,0 +1,27 @@
+### Scenario A: arm + racing arm against a watcher blocked on the wake-queue lock (grace=3s, confirm=2s)
+holder pid 95094 holds /private/var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T/fm-watch-arm-tests.sbTooo/drive-blocked/state/.wake-queue.lock
+t=1s beacon-age=999999 pid-identity=missing lock-pid=95144
+t=2s beacon-age=999999 pid-identity=missing lock-pid=95144
+t=3s beacon-age=999999 pid-identity=missing lock-pid=95144
+t=4s beacon-age=999999 pid-identity=missing lock-pid=95144
+t=5s beacon-age=999999 pid-identity=missing lock-pid=95144
+t=6s beacon-age=999999 pid-identity=missing lock-pid=95144
+t=7s beacon-age=999999 pid-identity=missing lock-pid=95144
+t=8s beacon-age=999999 pid-identity=missing lock-pid=95144
+--- first arm output:
+<base>/bin/fm-watch-arm.sh: line 630: 95144 Terminated: 15          "$WATCH" > "$child_out"
+watcher: FAILED - no live watcher with a fresh beacon
+--- racing arm (wake-queue lock still held: yes):
+<base>/bin/fm-watch-arm.sh: line 630: 96582 Terminated: 15          "$WATCH" > "$child_out"
+watcher: FAILED - no live watcher with a fresh beacon
+--- released wake-queue lock; beacon ages after release:
+beacon-age=999999
+beacon-age=999999
+beacon-age=999999
+watcher: none running
+
+### Scenario B: startup wedged past the stall bound (FM_WATCHER_STALL_BOUND=3) goes stale and refuses
+watcher pid 4111 still running after 15s (no refusal)
+stderr: 
+lock pid retained: 4111 (watcher was 4111)
+beacon-age 999999 -> 999999 (2s later)

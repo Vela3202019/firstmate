@@ -1,0 +1,25 @@
+### Scenario A: arm + racing arm against a watcher blocked on the wake-queue lock (grace=3s, confirm=2s)
+holder pid 89675 holds /private/var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T/fm-watch-arm-tests.qxWCv3/drive-blocked/state/.wake-queue.lock
+t=1s beacon-age=0 pid-identity=present lock-pid=89713
+t=2s beacon-age=1 pid-identity=present lock-pid=89713
+t=3s beacon-age=1 pid-identity=present lock-pid=89713
+t=4s beacon-age=1 pid-identity=present lock-pid=89713
+t=5s beacon-age=0 pid-identity=present lock-pid=89713
+t=6s beacon-age=0 pid-identity=present lock-pid=89713
+t=7s beacon-age=0 pid-identity=present lock-pid=89713
+t=8s beacon-age=1 pid-identity=present lock-pid=89713
+--- first arm output:
+watcher: started pid=89713 (beacon fresh)
+--- racing arm (wake-queue lock still held: yes):
+watcher: attached pid=89713 (beacon 0s)
+--- released wake-queue lock; beacon ages after release:
+beacon-age=1
+beacon-age=1
+beacon-age=0
+watcher: stopped pid=89713
+
+### Scenario B: startup wedged past the stall bound (FM_WATCHER_STALL_BOUND=3) goes stale and refuses
+watcher exit=1
+stderr: watcher: recovery state could not be reopened safely; retaining stale lock evidence
+lock pid retained: 94464 (watcher was 94464)
+beacon-age 1 -> 3 (2s later)

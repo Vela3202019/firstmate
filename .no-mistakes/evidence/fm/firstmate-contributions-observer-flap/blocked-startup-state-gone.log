@@ -1,0 +1,44 @@
+=== run 1
+[drive] wake-queue lock held by pid 42451; arming watcher (stall bound 900s)
+[drive] arm output so far:
+  | watcher: started pid=42519 (beacon fresh)
+[drive] beacon age before teardown: 0s; watcher alive: yes
+[drive] removed state dir at t=0
+[drive] watcher pid 42519 exited: yes after 0s
+[drive] final arm output:
+  | watcher: started pid=42519 (beacon fresh)
+  | watcher: exiting - state directory no longer exists: /var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T//fm-lab.vl4Gfq/state
+  | watcher: FAILED - watcher cycle exited 1 without an actionable reason
+=== run 2
+[drive] wake-queue lock held by pid 45432; arming watcher (stall bound 900s)
+[drive] arm output so far:
+  | watcher: started pid=45519 (beacon fresh)
+[drive] beacon age before teardown: 0s; watcher alive: yes
+[drive] removed state dir at t=0
+[drive] watcher pid 45519 exited: yes after 0s
+[drive] final arm output:
+  | watcher: started pid=45519 (beacon fresh)
+  | watcher: exiting - state directory no longer exists: /var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T//fm-lab.KndqYi/state
+  | watcher: FAILED - watcher cycle exited 1 without an actionable reason
+=== run 3
+[drive] wake-queue lock held by pid 48605; arming watcher (stall bound 900s)
+[drive] arm output so far:
+  | watcher: started pid=48673 (beacon fresh)
+[drive] beacon age before teardown: 0s; watcher alive: yes
+[drive] removed state dir at t=0
+[drive] watcher pid 48673 exited: yes after 0s
+[drive] final arm output:
+  | watcher: started pid=48673 (beacon fresh)
+  | watcher: exiting - state directory no longer exists: /var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T//fm-lab.1vPWS6/state
+  | watcher: FAILED - watcher cycle exited 1 without an actionable reason
+=== run 4
+[drive] wake-queue lock held by pid 50295; arming watcher (stall bound 900s)
+[drive] arm output so far:
+  | watcher: started pid=50374 (beacon fresh)
+[drive] beacon age before teardown: 0s; watcher alive: yes
+[drive] removed state dir at t=0
+[drive] watcher pid 50374 exited: yes after 0s
+[drive] final arm output:
+  | watcher: started pid=50374 (beacon fresh)
+  | watcher: exiting - state directory no longer exists: /var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T//fm-lab.J6aeIu/state
+  | watcher: FAILED - watcher cycle exited 1 without an actionable reason
