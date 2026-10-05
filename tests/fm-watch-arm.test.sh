@@ -406,6 +406,7 @@ test_arm_confirms_a_watcher_blocked_on_the_wake_queue_lock() {
   raceout="$dir/race.out"
   mkdir -p "$home/data"
   (
+    # shellcheck disable=SC2030,SC2031
     export FM_HOME="$home" FM_STATE_OVERRIDE="$state"
     # shellcheck source=bin/fm-wake-lib.sh
     . "$ROOT/bin/fm-wake-lib.sh"
@@ -442,8 +443,9 @@ test_arm_confirms_a_watcher_blocked_on_the_wake_queue_lock() {
 
   # Hold the startup block past the 3s grace plus the confirmation window.
   sleep 6
-  [ ! -e "$dir/release" ] && is_live_non_zombie "$holder" \
-    || fail 'the wake-queue lock was released before the racing arm ran'
+  if [ -e "$dir/release" ] || ! is_live_non_zombie "$holder"; then
+    fail 'the wake-queue lock was released before the racing arm ran'
+  fi
   PATH="$fakebin:$PATH" FM_HOME="$home" FM_STATE_OVERRIDE="$state" FM_ARM_ATTACH_POLL=0.1 \
     FM_GUARD_GRACE=3 FM_WATCHER_STALL_BOUND=60 FM_ARM_CONFIRM_TIMEOUT=2 "$WATCH_ARM" > "$raceout" 2>&1 &
   race_pid=$!
@@ -481,6 +483,7 @@ test_wedged_startup_goes_stale_at_the_stall_bound() {
   err="$dir/watch.err"
   mkdir -p "$home/data"
   (
+    # shellcheck disable=SC2030,SC2031
     export FM_HOME="$home" FM_STATE_OVERRIDE="$state"
     # shellcheck source=bin/fm-wake-lib.sh
     . "$ROOT/bin/fm-wake-lib.sh"
