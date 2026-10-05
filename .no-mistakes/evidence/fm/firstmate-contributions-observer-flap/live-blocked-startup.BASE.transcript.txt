@@ -1,0 +1,13 @@
+== 16:23:03 wake-queue lock held by pid 11973 (simulated long drain)
+== 16:23:03 arm A (grace=3s, confirm window=2s, stall bound=60s)
+  armA| /var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T//fm-base.bU5Sef/bin/fm-watch-arm.sh: line 630: 12049 Terminated: 15          "$WATCH" > "$child_out"
+  armA| watcher: FAILED - no live watcher with a fresh beacon
+stat: /var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T//fm-lab.c8wisT/state/.last-watcher-beat: stat: No such file or directory
+/Users/vela/.no-mistakes/evidence/01M46TPTETNP6T9EVKX65R0TPX/live-blocked-startup.sh: line 21: 1791242589 -  : syntax error: operand expected (error token is " ")
+== 16:23:09 arm B racing, after block > grace + confirm window
+  armB| /var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T//fm-base.bU5Sef/bin/fm-watch-arm.sh: line 630: 13360 Terminated: 15          "$WATCH" > "$child_out"
+  armB| watcher: FAILED - no live watcher with a fresh beacon
+RESULT: no stale-heartbeat refusal
+== 16:23:12 lock released; watcher proceeds to its first poll
+stat: /var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T//fm-lab.c8wisT/state/.last-watcher-beat: stat: No such file or directory
+/Users/vela/.no-mistakes/evidence/01M46TPTETNP6T9EVKX65R0TPX/live-blocked-startup.sh: line 31: 1791242595 -  : syntax error: operand expected (error token is " ")

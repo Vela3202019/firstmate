@@ -1,0 +1,12 @@
+== 16:22:42 wake-queue lock held by pid 4128 (simulated long drain)
+== 16:22:42 arm A (grace=3s, confirm window=2s, stall bound=60s)
+  armA| watcher: started pid=4211 (beacon fresh)
+  t+2s beacon age: 0s  lock pid=4211 identity=present
+  t+4s beacon age: 0s  lock pid=4211 identity=present
+  t+6s beacon age: 0s  lock pid=4211 identity=present
+  t+8s beacon age: 0s  lock pid=4211 identity=present
+== 16:22:50 arm B racing, after block > grace + confirm window
+  armB| watcher: attached pid=4211 (beacon 0s)
+RESULT: no stale-heartbeat refusal
+== 16:22:51 lock released; watcher proceeds to its first poll
+  watcher alive: yes  beacon age: 0s

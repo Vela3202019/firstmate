@@ -1,0 +1,12 @@
+### Scenario: startup wedged past the stall bound (bound=4s, hung holder never releases)
+  watcher exited rc=1 after 4s; stderr: watcher: recovery state could not be reopened safely; retaining stale lock evidence
+  lock evidence retained: pid file names 20911 (watcher was 20911)
+  beacon age after refusal: 1s -> 4s (still aging = not faking supervision)
+
+### Scenario: state dir removed right after 'watcher: started' (x6)
+  run 1: arm said 'watcher: started pid=22386 (beacon fresh)'; watcher 22386 exited within 2s; reason: watcher: exiting - state directory no longer exists: 
+  run 2: arm said 'watcher: started pid=23522 (beacon fresh)'; watcher 23522 exited within 2s; reason: watcher: exiting - state directory no longer exists: 
+  run 3: arm said 'watcher: started pid=24681 (beacon fresh)'; watcher 24681 exited within 2s; reason: watcher: exiting - state directory no longer exists: 
+  run 4: arm said 'watcher: started pid=26959 (beacon fresh)'; watcher 26959 exited within 3s; reason: watcher: exiting - state directory no longer exists: 
+  run 5: arm said 'watcher: started pid=28808 (beacon fresh)'; watcher 28808 exited within 2s; reason: watcher: exiting - state directory no longer exists: 
+  run 6: arm said 'watcher: started pid=29950 (beacon fresh)'; watcher 29950 exited within 2s; reason: watcher: exiting - state directory no longer exists: 

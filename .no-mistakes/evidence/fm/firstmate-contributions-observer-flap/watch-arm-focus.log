@@ -1,0 +1,13 @@
+ok - watch-arm: an attached arm reports the wake its cycle delivered instead of a false failure
+ok - watch-arm: a delivered wake consumed by the handling turn still closes the attached arm cleanly
+ok - watch-arm: a watcher blocked at startup on the wake-queue lock is confirmed and attached, never refused as stale
+ok - watch-arm: a startup wedged on the wake-queue lock past the stall bound stops beating and refuses
+ok - watch-arm: an attached arm keeps following a slow live holder and reports its wake
+ok - watch-arm: a watcher exits when its state directory is removed
+ok - watch-arm: a watcher exits when its state directory is removed
+ok - watch-arm: a watcher exits when its state directory is removed
+ok - watch-arm: a watcher exits when its home is removed
+/Users/vela/.no-mistakes/worktrees/34bae1aacd62/01M46TPTETNP6T9EVKX65R0TPX/bin/fm-watch-arm.sh: line 766: 89191 Killed: 9               "$WATCH" > "$child_out"
+WAKE_ACK_REQUIRED: after handling completes run bin/fm-wake-drain.sh --ack-through 2 --recovery-generation 89779.1791242535.BoNrE3
+ok - watch-arm: re-arm surfaces every queued wake and an open remote decision after downtime
+bash $R  10.19s user 15.29s system 36% cpu 1:10.29 total

@@ -47,4 +47,7 @@ ok - a transient first read failure is retried once and records a clean observat
 ok - a failure that survives the retry records the error and wakes once
 ok - a genuinely unavailable forge records an error and wakes once per failure episode
 ok - a late owner does not restart a shared forge failure episode
-bash tests/fm-contributions.test.sh  21.25s user 28.95s system 29% cpu 2:50.58 total
+ok - retire stops the unavailable check, leaves rotation and restores complete coverage
+ok - a late owner settled beside a retired final record stays unretired and known
+ok - retire is idempotent and refuses non-captain, unknown, malformed and signal-bearing pairs
+bash tests/fm-contributions.test.sh  20.12s user 22.17s system 27% cpu 2:35.58 total
