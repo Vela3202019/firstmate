@@ -391,6 +391,82 @@ test_attached_arm_hands_a_stalled_holder_to_its_replacement() {
   pass "watch-arm: an attached arm hands a holder stalled past the bound to its owner's replacement"
 }
 
+# A fresh watcher can wait at startup on the wake-queue lock a long drain holds,
+# before its first poll. Held there past the arm's confirmation window and the
+# stale grace, it must still read as a live identity-matched holder: the arm
+# that forked it reports it started, and a racing arm attaches instead of
+# refusing a stale heartbeat.
+test_arm_confirms_a_watcher_blocked_on_the_wake_queue_lock() {
+  local dir home state fakebin holder armout raceout i watch_pid race_pid
+  dir=$(make_case blocked-startup)
+  home="$dir/home"
+  state="$dir/state"
+  fakebin="$dir/fakebin"
+  armout="$dir/arm.out"
+  raceout="$dir/race.out"
+  mkdir -p "$home/data"
+  (
+    export FM_HOME="$home" FM_STATE_OVERRIDE="$state"
+    # shellcheck source=bin/fm-wake-lib.sh
+    . "$ROOT/bin/fm-wake-lib.sh"
+    fm_lock_try_acquire "$state/.wake-queue.lock" || exit 1
+    : > "$dir/holding"
+    i=0
+    while [ "$i" -lt 600 ] && [ ! -e "$dir/release" ]; do
+      sleep 0.1
+      i=$((i + 1))
+    done
+    fm_lock_release "$state/.wake-queue.lock" || true
+  ) &
+  holder=$!
+  i=0
+  while [ "$i" -lt 50 ] && [ ! -e "$dir/holding" ]; do
+    sleep 0.1
+    i=$((i + 1))
+  done
+  [ -e "$dir/holding" ] || fail 'lock holder did not take the wake-queue lock'
+
+  PATH="$fakebin:$PATH" FM_HOME="$home" FM_STATE_OVERRIDE="$state" \
+    FM_POLL=1 FM_SIGNAL_GRACE=0 FM_CHECK_INTERVAL=999999 FM_HEARTBEAT=999999 \
+    FM_GUARD_GRACE=3 FM_ARM_CONFIRM_TIMEOUT=2 "$WATCH_ARM" > "$armout" 2>&1 &
+  ARM_PID=$!
+  i=0
+  while [ "$i" -lt 80 ]; do
+    grep -q '^watcher: started pid=' "$armout" 2>/dev/null && break
+    is_live_non_zombie "$ARM_PID" || break
+    sleep 0.1
+    i=$((i + 1))
+  done
+  watch_pid=$(sed -n 's/^watcher: started pid=\([0-9][0-9]*\).*/\1/p' "$armout" | head -1)
+  [ -n "$watch_pid" ] || { : > "$dir/release"; fail "arm failed a watcher blocked on the wake-queue lock: $(cat "$armout")"; }
+
+  # Hold the startup block past the 3s grace plus the confirmation window.
+  sleep 6
+  [ ! -e "$dir/release" ] && is_live_non_zombie "$holder" \
+    || fail 'the wake-queue lock was released before the racing arm ran'
+  PATH="$fakebin:$PATH" FM_HOME="$home" FM_STATE_OVERRIDE="$state" FM_ARM_ATTACH_POLL=0.1 \
+    FM_GUARD_GRACE=3 FM_ARM_CONFIRM_TIMEOUT=2 "$WATCH_ARM" > "$raceout" 2>&1 &
+  race_pid=$!
+  i=0
+  while [ "$i" -lt 80 ]; do
+    grep -qF "watcher: attached pid=$watch_pid" "$raceout" 2>/dev/null && break
+    is_live_non_zombie "$race_pid" || break
+    sleep 0.1
+    i=$((i + 1))
+  done
+  : > "$dir/release"
+  wait "$holder" 2>/dev/null || true
+  grep -qF "watcher: attached pid=$watch_pid" "$raceout" \
+    || fail "racing arm did not attach to the blocked watcher: $(cat "$raceout")"
+  ! grep -qF 'heartbeat is stale' "$raceout" \
+    || fail "racing arm refused the blocked watcher as stale: $(cat "$raceout")"
+
+  PATH="$fakebin:$PATH" FM_HOME="$home" FM_STATE_OVERRIDE="$state" "$WATCH_ARM" --stop >/dev/null 2>&1 || true
+  wait_for_exit "$race_pid" 100 >/dev/null 2>&1 || true
+  wait_for_exit "$ARM_PID" 100 >/dev/null 2>&1 || true
+  pass "watch-arm: a watcher blocked at startup on the wake-queue lock is confirmed and attached, never refused as stale"
+}
+
 test_rearm_resurfaces_durable_queue_and_remote_open_decision() {
   local dir home state fakebin result armout drainout status watcher_pid sequence generation decision_recovery_arm decision_successor
   dir=$(make_case rearm-resurface)
@@ -1595,6 +1671,7 @@ test_reaper_stops_a_tracked_watcher
 test_attached_arm_still_fails_on_a_wake_it_did_not_deliver
 test_attached_arm_follows_a_slow_live_holder
 test_attached_arm_hands_a_stalled_holder_to_its_replacement
+test_arm_confirms_a_watcher_blocked_on_the_wake_queue_lock
 test_rearm_resurfaces_durable_queue_and_remote_open_decision
 test_slow_rearm_recovery_is_still_surfaced
 test_marker_publish_failure_retains_recovery_evidence

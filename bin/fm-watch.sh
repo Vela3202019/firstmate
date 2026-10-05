@@ -264,14 +264,14 @@ fi
 # turn-ended signature, annotation staleness checks, and guarded bookkeeping writes.
 
 POLL=${FM_POLL:-15}                   # seconds between cycles
-# The liveness beacon is touched once per cycle at the top of the loop,
-# and once more at startup the moment the singleton lock is claimed, before
-# the blocking recovery-marker transitions, so a live watcher still starting
-# never reads as a stale holder. A healthy cycle's beacon can legitimately
-# age up to POLL seconds between touches. fm_poll_derived_grace
-# (bin/fm-wake-lib.sh, already sourced
-# transitively above) is the single owner of the max(300, poll+60)
-# derivation - see docs/turnend-guard.md "Guard grace and the poll cadence".
+# The liveness beacon is touched once per cycle at the top of the loop, and
+# every second at startup from the moment the singleton lock is claimed until
+# the blocking recovery-marker transitions finish, so a live watcher still
+# starting never reads as a stale holder. A healthy cycle's beacon can
+# legitimately age up to POLL seconds between touches. fm_poll_derived_grace
+# (bin/fm-wake-lib.sh, already sourced transitively above) is the single
+# owner of the max(300, poll+60) derivation - see docs/turnend-guard.md
+# "Guard grace and the poll cadence".
 # This recomputes the library default above now that the real configured
 # POLL is known.
 WATCHER_STALE_GRACE=${FM_WATCHER_STALE_GRACE:-${FM_GUARD_GRACE:-$(fm_poll_derived_grace "$POLL")}}
@@ -2439,31 +2439,6 @@ done
 if [ -n "$EVICTED_PID" ]; then
   echo "watcher: replaced stalled pid $EVICTED_PID (beacon ${EVICTED_BEAT_AGE}s past hard bound ${WATCHER_STALL_BOUND}s)"
 fi
-# Beat as soon as the singleton is ours, before the blocking recovery-marker
-# transitions below: a live watcher held up by a contended startup lock must
-# not present to a racing arm or the guard as a stale-heartbeat holder, and
-# the arm's attach path already follows a live identity-matched holder up to
-# the stall bound before it escalates.
-touch "$BEAT"
-WATCHER_RECOVERY_PENDING=0
-if [ -n "${FM_LOCK_RECOVERED_PID:-}" ]; then
-  WATCHER_RECOVERY_PENDING=1
-fi
-if [ "${FM_WATCH_HANDLING_SUCCESSOR:-0}" != 1 ]; then
-  if ! fm_recovery_marker_reopen_announced "$WATCHER_DOWNTIME_MARKER"; then
-    echo "watcher: recovery state could not be reopened safely; retaining stale lock evidence" >&2
-    exit 1
-  fi
-fi
-if ! fm_recovery_marker_arm_check "$WATCHER_DOWNTIME_MARKER"; then
-  echo "watcher: recovery state could not be consumed safely; retaining stale lock evidence" >&2
-  exit 1
-fi
-if [ "${FM_WATCH_HANDLING_SUCCESSOR:-0}" = 1 ]; then
-  WATCHER_RECOVERY_PENDING=0
-elif [ "$FM_RECOVERY_MARKER_ACTION" = recover ]; then
-  WATCHER_RECOVERY_PENDING=1
-fi
 # Side-band ledger publication, detached from the poll loop.
 #
 # The poll loop owns the liveness beacon below, and fm-guard.sh reads that
@@ -2568,6 +2543,39 @@ printf '%s\n' "$WATCH_PATH" > "$WATCH_LOCK/watcher-path" || true
 FM_WATCH_DELIVERY_PID=$WATCHER_PID
 FM_WATCH_DELIVERY_IDENTITY=$(fm_pid_identity "$WATCHER_PID" 2>/dev/null || true)
 printf '%s\n' "$FM_WATCH_DELIVERY_IDENTITY" > "$WATCH_LOCK/pid-identity" 2>/dev/null || true
+# Keep beating from the moment the lock identity is published until the
+# recovery-marker transitions below finish: they wait unbounded on the
+# wake-queue lock a long drain holds, and a live watcher held there must read
+# to a racing arm and the guard as a healthy identity-matched holder, not a
+# stale-heartbeat one. Their refusals keep the stale lock evidence, so they
+# leave without the cleanup trap.
+( while fm_pid_alive "$WATCHER_PID"; do touch "$BEAT"; sleep 1; done ) </dev/null >/dev/null 2>&1 &
+STARTUP_BEAT_PID=$!
+WATCHER_RECOVERY_PENDING=0
+if [ -n "${FM_LOCK_RECOVERED_PID:-}" ]; then
+  WATCHER_RECOVERY_PENDING=1
+fi
+if [ "${FM_WATCH_HANDLING_SUCCESSOR:-0}" != 1 ]; then
+  if ! fm_recovery_marker_reopen_announced "$WATCHER_DOWNTIME_MARKER"; then
+    kill "$STARTUP_BEAT_PID" 2>/dev/null || true
+    trap - EXIT
+    echo "watcher: recovery state could not be reopened safely; retaining stale lock evidence" >&2
+    exit 1
+  fi
+fi
+if ! fm_recovery_marker_arm_check "$WATCHER_DOWNTIME_MARKER"; then
+  kill "$STARTUP_BEAT_PID" 2>/dev/null || true
+  trap - EXIT
+  echo "watcher: recovery state could not be consumed safely; retaining stale lock evidence" >&2
+  exit 1
+fi
+kill "$STARTUP_BEAT_PID" 2>/dev/null || true
+wait "$STARTUP_BEAT_PID" 2>/dev/null || true
+if [ "${FM_WATCH_HANDLING_SUCCESSOR:-0}" = 1 ]; then
+  WATCHER_RECOVERY_PENDING=0
+elif [ "$FM_RECOVERY_MARKER_ACTION" = recover ]; then
+  WATCHER_RECOVERY_PENDING=1
+fi
 
 [ -e "$STATE/.last-heartbeat" ] || touch "$STATE/.last-heartbeat"
 
