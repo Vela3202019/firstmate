@@ -50,8 +50,10 @@
 # and is cut down to the watcher's own per-check bound (FM_CHECK_TIMEOUT,
 # default 30, read from the poll's environment because the watcher runs it as
 # a direct child) with a three-second margin. Every read is capped at five
-# seconds, and a read killed at that bound or at the deadline is budget
-# refusal, never a forge failure. A pull observation has three
+# seconds, and a read killed at that bound, killed by a signal (a status of
+# 128+signal, which is how an outer bound such as the watcher's per-check
+# timeout ends the read), or refused at the deadline is budget refusal, never
+# a forge failure. A pull observation has three
 # dependent waves: core, six independent reads, then the closing head read;
 # an issue has two waves. Before starting a URL, poll reserves the smaller of
 # the effective budget and 15 seconds for those waves. URLs needing forge
@@ -60,9 +62,13 @@
 # reordering. Terminal URLs settle separately before the forge budget starts
 # and consume no rotation slots.
 # A deliberately smaller configured budget remains bounded and may be
-# unmeasured, rather than being mislabeled unavailable. Each distinct URL is
-# attempted at most once per poll and its observation applied to every owner.
-# A final observation applies
+# unmeasured, rather than being mislabeled unavailable. A URL whose
+# observation fails is retried once while the budget still covers a full
+# observation reserve, so a transient forge failure or a head that moved
+# mid-read costs one extra read rather than a false unavailable wake; only a
+# second consecutive failure records the error. Each distinct URL is
+# otherwise attempted at most once per poll and its observation applied to
+# every owner. A final observation applies
 # to every owner without another forge read. When the budget refuses a read
 # mid-observation, that URL's records stay untouched and the poll moves to the
 # next URL that still has a full observation reserve; only a genuine forge
@@ -222,9 +228,10 @@ forge() {
   [ "$remaining" -le 5 ] || remaining=5
   fm_run_timed "$remaining" env GH_PROMPT_DISABLED=1 GH_NO_UPDATE_NOTIFIER=1 \
     gh "$@" 2> "$forge_err" || rc=$?
-  # A kill at the read bound or the deadline is budget refusal too; only the
-  # forge's own nonzero exit is unavailable evidence.
-  if [ "$rc" -eq 124 ]; then
+  # A kill - the read bound's 124, or a signal death (128+signal, how an outer
+  # bound such as the watcher's per-check timeout ends the read) - is budget
+  # refusal too; only the forge's own nonzero exit is unavailable evidence.
+  if [ "$rc" -eq 124 ] || [ "$rc" -gt 128 ]; then
     BUDGET_EXHAUSTED=1
     : > "$TMP/budget-exhausted"
   elif [ "$rc" -ne 0 ]; then
@@ -397,6 +404,14 @@ poll() {
     observed=0
     observe "$url" || observed=$?
     [ "$BUDGET_EXHAUSTED" -eq 0 ] || continue
+    # One retry while the budget still covers a full observation: a transient
+    # forge failure or a head that moved mid-read costs one extra observation
+    # rather than a false unavailable error and wake.
+    if [ "$observed" -ne 0 ] && [ $((DEADLINE - $(date +%s))) -ge "$OBSERVATION_RESERVE" ]; then
+      observed=0
+      observe "$url" || observed=$?
+      [ "$BUDGET_EXHAUSTED" -eq 0 ] || continue
+    fi
     # Wake once per failure episode: only when no owner has a prior error.
     if [ "$observed" -ne 0 ] && jq -ne --slurpfile saved "$TMP/saved.json" --arg url "$url" --args \
       'all($ARGS.positional[] as $task | [$saved[0][] | select(.task == $task) | .records[] | select(.url == $url)] | first;
