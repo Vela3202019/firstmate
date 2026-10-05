@@ -50,10 +50,8 @@
 # and is cut down to the watcher's own per-check bound (FM_CHECK_TIMEOUT,
 # default 30, read from the poll's environment because the watcher runs it as
 # a direct child) with a three-second margin. Every read is capped at five
-# seconds, and a read killed at that bound, killed by a signal (a status of
-# 128+signal, which is how an outer bound such as the watcher's per-check
-# timeout ends the read), or refused at the deadline is budget refusal, never
-# a forge failure. A pull observation has three
+# seconds, and a read killed at that bound or at the deadline is budget
+# refusal, never a forge failure. A pull observation has three
 # dependent waves: core, six independent reads, then the closing head read;
 # an issue has two waves. Before starting a URL, poll reserves the smaller of
 # the effective budget and 15 seconds for those waves. URLs needing forge
@@ -228,10 +226,9 @@ forge() {
   [ "$remaining" -le 5 ] || remaining=5
   fm_run_timed "$remaining" env GH_PROMPT_DISABLED=1 GH_NO_UPDATE_NOTIFIER=1 \
     gh "$@" 2> "$forge_err" || rc=$?
-  # A kill - the read bound's 124, or a signal death (128+signal, how an outer
-  # bound such as the watcher's per-check timeout ends the read) - is budget
-  # refusal too; only the forge's own nonzero exit is unavailable evidence.
-  if [ "$rc" -eq 124 ] || [ "$rc" -gt 128 ]; then
+  # A kill at the read bound or the deadline is budget refusal too; only the
+  # forge's own nonzero exit is unavailable evidence.
+  if [ "$rc" -eq 124 ]; then
     BUDGET_EXHAUSTED=1
     : > "$TMP/budget-exhausted"
   elif [ "$rc" -ne 0 ]; then
