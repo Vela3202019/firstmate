@@ -77,8 +77,10 @@
 # Recovery restoration follows docs/watcher-continuity.md "Generation reuse";
 # an unconfirmed stop leaves downtime for the fresh cycle's recovery check.
 # The stop window is the watcher's poll interval plus margin, because a TERM'd
-# watcher defers its exit until its foreground poll sleep or pane capture ends.
-# Any other watcher, or one that outlives the stop window,
+# watcher defers its exit until its foreground poll sleep or pane capture
+# ends; a capture that outlives the window keeps the wait going up to the
+# stall bound so the handover restore still runs.
+# Any other watcher, or one that outlives the stall bound,
 # is attached to exactly as a plain arm attaches.
 #
 # --stop: the same home-scoped stop without re-arming, for an owner that ends
@@ -141,6 +143,8 @@ CONFIRM_TIMEOUT=${FM_ARM_CONFIRM_TIMEOUT:-$ARM_CONFIRM_DEFAULT}
 # defers its exit until its foreground operation completes (the end-of-cycle
 # poll sleep or event wait, a pane capture), so the stop wait must cover the
 # watcher's poll interval plus margin for a slow capture and cleanup.
+# A capture that outlives the window does not abandon the stop: the wait
+# continues up to the stall bound, so the handover restore still runs.
 # A stop abandoned too early never runs the handover restore, and the dying
 # watcher's own downtime publication then re-announces an acknowledged
 # episode to the next cycle.
@@ -573,6 +577,15 @@ take_over_cycle() {  # <watcher-pid> <identity>
     kill -TERM "$pid" 2>/dev/null || true
   fi
   deadline=$((SECONDS + TAKE_OVER_STOP_BOUND))
+  while fm_pid_alive "$pid" && [ "$SECONDS" -lt "$deadline" ]; do
+    sleep 0.1
+  done
+  # The stop is already in flight, so the death is guaranteed once the
+  # foreground operation the watcher is blocked on completes. A pane capture
+  # that outlives the stop window must not abandon the handover restore:
+  # keep waiting up to the stall bound, the age at which an attached arm
+  # stops following a live holder it did not signal.
+  deadline=$((SECONDS + STALL_BOUND))
   while fm_pid_alive "$pid" && [ "$SECONDS" -lt "$deadline" ]; do
     sleep 0.1
   done

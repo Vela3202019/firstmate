@@ -1360,6 +1360,99 @@ SH
   pass "watch-arm: --take-over waits out a slow stop and keeps the acknowledged episode retired"
 }
 
+# A pane capture can outlive the take-over stop window (window = FM_POLL + 25;
+# here FM_POLL=1, so 26s, against a 30s capture). The stop is already in
+# flight, so the taking arm must keep waiting for the death up to the stall
+# bound and still restore the acknowledged episode instead of abandoning it.
+test_take_over_restores_after_a_capture_that_outlives_the_stop_window() {
+  local dir home state fakebin owner armout watcher i
+  dir=$(make_case take-over-capture-outlives-window)
+  home="$dir/home"
+  mkdir -p "$home"
+  state="$dir/state"
+  fakebin="$dir/fakebin"
+  armout="$dir/arm.out"
+
+  # The seed watcher's first poll blocks ~30s inside its pane capture: the
+  # capture outlives the 26s stop window the take-over derives from FM_POLL=1.
+  cat > "$fakebin/tmux" <<'SH'
+#!/usr/bin/env bash
+set -u
+if [ "${1:-}" = "capture-pane" ]; then
+  touch "${FM_FAKE_TMUX_SLOW_MARKER:-/tmp/no-marker}"
+  sleep 30
+  cat "${FM_FAKE_TMUX_CAPTURE:-/dev/null}"
+  exit 0
+fi
+if [ "${1:-}" = "list-windows" ]; then printf '%s\n' "${FM_FAKE_TMUX_WINDOWS:-}"; exit 0; fi
+if [ "${1:-}" = "display-message" ]; then exit 0; fi
+exit 1
+SH
+  chmod +x "$fakebin/tmux"
+  printf 'idle prompt\n' > "$dir/pane.txt"
+  printf 'window=test:slowpane\nkind=ship\nharness=claude\n' > "$state/slowpane.meta"
+
+  PATH="$fakebin:$PATH" FM_HOME="$home" FM_STATE_OVERRIDE="$state" \
+    FM_FAKE_TMUX_WINDOWS='test:slowpane' FM_FAKE_TMUX_CAPTURE="$dir/pane.txt" \
+    FM_FAKE_TMUX_SLOW_MARKER="$dir/capture-started" \
+    FM_POLL=1 FM_SIGNAL_GRACE=0 FM_CHECK_INTERVAL=999999 FM_HEARTBEAT=999999 \
+    FM_ARM_CONFIRM_TIMEOUT="$REARM_CONFIRM_SECONDS" \
+    "$WATCH_ARM" --restart > "$dir/owner.out" &
+  owner=$!
+  i=0
+  while [ "$i" -lt "$REARM_REPORT_POLLS" ]; do
+    grep -q '^watcher: started pid=' "$dir/owner.out" 2>/dev/null && break
+    sleep 0.05
+    i=$((i + 1))
+  done
+  grep -q '^watcher: started pid=' "$dir/owner.out" \
+    || fail "fixture: the owner arm never started a watcher: $(cat "$dir/owner.out")"
+  watcher=$(cat "$state/.watch.lock/pid")
+
+  # Main acknowledged everything: the fresh cycle must stay quiet. This lands
+  # only after the seed watcher passed its recovery check on the first poll, so
+  # the seed watcher cannot announce the appended row itself.
+  i=0
+  while [ "$i" -lt 400 ] && [ ! -e "$dir/capture-started" ]; do
+    sleep 0.05
+    i=$((i + 1))
+  done
+  [ -e "$dir/capture-started" ] || fail "seed watcher never entered its slow capture"
+  append_wake "$state" signal take-over "signal: fixture handled by main"
+  ack_wakes "$state" >/dev/null || fail "fixture: main could not acknowledge the handled wake"
+  case "$(cat "$state/.watcher-down" 2>/dev/null)" in acked:*) ;; *) fail "fixture: the episode was not acknowledged" ;; esac
+
+  PATH="$fakebin:$PATH" FM_HOME="$home" FM_STATE_OVERRIDE="$state" \
+    FM_POLL=1 FM_SIGNAL_GRACE=0 FM_CHECK_INTERVAL=999999 FM_HEARTBEAT=999999 \
+    FM_ARM_CONFIRM_TIMEOUT=3 \
+    "$WATCH_ARM" --take-over "$owner" > "$armout" &
+  ARM_PID=$!
+  # The death lands seconds past the 26s stop window, so this ceiling must
+  # outlast the 30s capture plus the fresh-cycle confirmation.
+  i=0
+  while [ "$i" -lt 1600 ]; do
+    grep -q '^watcher: started pid=' "$armout" 2>/dev/null && break
+    is_live_non_zombie "$ARM_PID" || break
+    sleep 0.05
+    i=$((i + 1))
+  done
+  grep -q '^watcher: started pid=' "$armout" \
+    || fail "--take-over did not own a fresh cycle after a capture that outlived the stop window: $(cat "$armout")"
+  ! is_live_non_zombie "$watcher" || fail "--take-over left the captured watcher running"
+  case "$(cat "$state/.watcher-down" 2>/dev/null)" in
+    acked:*) ;;
+    *) fail "the outliving capture reopened an acknowledged episode: $(cat "$state/.watcher-down" 2>/dev/null)" ;;
+  esac
+  assert_not_contains "$(cat "$armout")" 'check: rearm-resurface' \
+    "a capture that outlives the stop window must not re-announce acknowledged downtime"
+  grep -q 'reason=taken-over	.*successor=started:' "$state/.watch-cycle-exits.log" \
+    || fail "the lifecycle ledger does not link the outliving taken-over cycle to the one it started: $(cat "$state/.watch-cycle-exits.log")"
+  kill -TERM "$ARM_PID" 2>/dev/null || true
+  wait_for_exit "$ARM_PID" 50 >/dev/null 2>&1 || true
+  wait "$owner" 2>/dev/null || true
+  pass "watch-arm: --take-over restores the acknowledged episode after a capture that outlives the stop window"
+}
+
 test_downtime_marker_does_not_follow_symlink() {
   local dir home state fakebin armout watcher_pid sentinel
   dir=$(make_case downtime-marker-symlink)
@@ -1711,3 +1804,4 @@ test_take_over_attaches_to_a_cycle_the_named_arm_does_not_own
 test_take_over_owns_a_fresh_cycle_and_keeps_queued_work_surfacing
 test_take_over_preserves_downtime_from_watcher_self_exit
 test_take_over_waits_out_a_slow_stop_and_keeps_the_episode_acknowledged
+test_take_over_restores_after_a_capture_that_outlives_the_stop_window
