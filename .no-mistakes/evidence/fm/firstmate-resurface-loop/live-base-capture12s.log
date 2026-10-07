@@ -1,0 +1,19 @@
+== [base 99da16d9 (before fix)] capture delay 12s, lab=/var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T//fm-lab.IsSdg9
+-- owner arm: watcher: started pid=31564 (beacon fresh)
+-- watcher pid=31564 entered its slow pane capture: yes
+-- after main's ack: .watcher-down=acked:handling:32295.1791354523.V1jjH5  queue_bytes=0
+-- take-over arm output after 8s:
+     watcher: attached pid=31564 (beacon 10s)
+-- old watcher pid=31564 alive: yes
+-- .watcher-down now: acked:handling:32295.1791354523.V1jjH5
+-- after the old watcher died: .watcher-down=pending:downtime:31564.1791354535.fKo7V5
+-- 4s later, take-over arm still waiting quietly: no; output now:
+     watcher: attached pid=31564 (beacon 10s)
+     watcher: FAILED - cycle ended without an actionable reason
+-- take-over arm exited; the host re-arms as it does after 'a close without a wake':
+     check: rearm-resurface
+-- cycle ledger (.watch-cycle-exits.log):
+     arm_pid=31537	watcher_pid=31564	origin=started	started_at=1791354522	ended_at=1791354535	exit_code=143	signal=TERM	reason=signal-exit	beacon_age=13	lock_before=pid:31564|identity:Tue Oct  6 23:28:42 2026     bash /tmp/fmbase.2qOP/bin/fm-watch.sh	lock_after=pid:none|identity:none	successor=none
+     arm_pid=33301	watcher_pid=31564	origin=attached	started_at=1791354532	ended_at=1791354539	exit_code=unknown	signal=unknown	reason=attached-cycle-ended	beacon_age=17	lock_before=pid:31564|identity:Tue Oct  6 23:28:42 2026     bash /tmp/fmbase.2qOP/bin/fm-watch.sh	lock_after=pid:none|identity:none	successor=none
+     arm_pid=37732	watcher_pid=37749	origin=started	started_at=1791354539	ended_at=1791354539	exit_code=0	signal=none	reason=actionable-check	beacon_age=0	lock_before=pid:none|identity:none	lock_after=pid:none|identity:none	successor=none
+== [base 99da16d9 (before fix)] lab torn down

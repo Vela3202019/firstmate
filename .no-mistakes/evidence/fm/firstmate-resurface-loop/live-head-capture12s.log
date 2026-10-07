@@ -1,0 +1,15 @@
+== [fixed HEAD 960390ae] capture delay 12s, lab=/var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T//fm-lab.r6Oa1b
+-- owner arm: watcher: started pid=39061 (beacon fresh)
+-- watcher pid=39061 entered its slow pane capture: yes
+-- after main's ack: .watcher-down=acked:handling:40206.1791354547.DY4lBO  queue_bytes=0
+-- take-over arm output after 12s:
+     watcher: started pid=44264 (beacon fresh)
+-- old watcher pid=39061 alive: no
+-- .watcher-down now: acked:handling:40206.1791354547.DY4lBO
+-- after the old watcher died: .watcher-down=acked:handling:40206.1791354547.DY4lBO
+-- 4s later, take-over arm still waiting quietly: yes; output now:
+     watcher: started pid=44264 (beacon fresh)
+-- cycle ledger (.watch-cycle-exits.log):
+     arm_pid=39038	watcher_pid=39061	origin=started	started_at=1791354546	ended_at=1791354559	exit_code=143	signal=TERM	reason=signal-exit	beacon_age=13	lock_before=pid:39061|identity:Tue Oct  6 23:29:06 2026     bash /Users/vela/.no-mistakes/worktrees/34bae1aacd62/01M49PKABF74NX0T7K3KJK59CB/bin/fm-watch.sh	lock_after=pid:none|identity:none	successor=none
+     arm_pid=41142	watcher_pid=39061	origin=attached	started_at=1791354548	ended_at=1791354559	exit_code=unknown	signal=unknown	reason=taken-over	beacon_age=13	lock_before=pid:39061|identity:Tue Oct  6 23:29:06 2026     bash /Users/vela/.no-mistakes/worktrees/34bae1aacd62/01M49PKABF74NX0T7K3KJK59CB/bin/fm-watch.sh	lock_after=pid:none|identity:none	successor=started:44264
+== [fixed HEAD 960390ae] lab torn down

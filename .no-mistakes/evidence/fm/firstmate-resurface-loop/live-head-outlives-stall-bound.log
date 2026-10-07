@@ -1,0 +1,14 @@
+== [fixed HEAD, FM_WATCHER_STALL_BOUND=6, capture 25s (watcher outlives stall bound)] capture delay 25s, lab=/var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T//fm-lab.QebM2n
+-- owner arm: watcher: started pid=48945 (beacon fresh)
+-- watcher pid=48945 entered its slow pane capture: yes
+-- after main's ack: .watcher-down=acked:handling:49748.1791354583.ULg3Gs  queue_bytes=0
+-- take-over arm output after 6s:
+     watcher: attached pid=48945 (beacon 7s)
+-- old watcher pid=48945 alive: yes
+-- .watcher-down now: acked:handling:49748.1791354583.ULg3Gs
+-- after the old watcher died: .watcher-down=pending:downtime:48945.1791354607.ZElqO3
+-- 4s later, take-over arm still waiting quietly: yes; output now:
+     watcher: attached pid=48945 (beacon 7s)
+-- cycle ledger (.watch-cycle-exits.log):
+     arm_pid=48912	watcher_pid=48945	origin=started	started_at=1791354582	ended_at=1791354608	exit_code=143	signal=TERM	reason=signal-exit	beacon_age=26	lock_before=pid:48945|identity:Tue Oct  6 23:29:42 2026     bash /Users/vela/.no-mistakes/worktrees/34bae1aacd62/01M49PKABF74NX0T7K3KJK59CB/bin/fm-watch.sh	lock_after=pid:none|identity:none	successor=none
+== [fixed HEAD, FM_WATCHER_STALL_BOUND=6, capture 25s (watcher outlives stall bound)] lab torn down
