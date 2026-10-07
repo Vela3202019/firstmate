@@ -76,10 +76,9 @@
 # arm would, and otherwise this arm owns a fresh cycle as a plain arm does.
 # Recovery restoration follows docs/watcher-continuity.md "Generation reuse";
 # an unconfirmed stop leaves downtime for the fresh cycle's recovery check.
-# The stop window is the watcher's poll interval plus margin, because a TERM'd
-# watcher defers its exit until its foreground poll sleep or pane capture
-# ends; a capture that outlives the window keeps the wait going up to the
-# stall bound so the handover restore still runs.
+# A TERM'd watcher defers its exit until its foreground poll sleep or pane
+# capture ends, so the take-over waits for its death up to the stall bound
+# and the handover restore still runs after a slow capture.
 # Any other watcher, or one that outlives the stall bound,
 # is attached to exactly as a plain arm attaches.
 #
@@ -139,18 +138,6 @@ case "${OSTYPE:-}" in
   *) ARM_CONFIRM_DEFAULT=10 ;;
 esac
 CONFIRM_TIMEOUT=${FM_ARM_CONFIRM_TIMEOUT:-$ARM_CONFIRM_DEFAULT}
-# How long a --take-over may wait for the TERM'd watcher to exit. A watcher
-# defers its exit until its foreground operation completes (the end-of-cycle
-# poll sleep or event wait, a pane capture), so the stop wait must cover the
-# watcher's poll interval plus margin for a slow capture and cleanup.
-# A capture that outlives the window does not abandon the stop: the wait
-# continues up to the stall bound, so the handover restore still runs.
-# A stop abandoned too early never runs the handover restore, and the dying
-# watcher's own downtime publication then re-announces an acknowledged
-# episode to the next cycle.
-WATCH_POLL=${FM_POLL:-15}
-case "$WATCH_POLL" in ''|*[!0-9]*) WATCH_POLL=15 ;; esac
-TAKE_OVER_STOP_BOUND=$((WATCH_POLL + 25))
 # Poll interval while attached to an existing healthy watcher.
 ATTACH_POLL=${FM_ARM_ATTACH_POLL:-0.5}
 # The beacon age at which the watcher's own re-arm evicts a live holder; an
@@ -568,7 +555,7 @@ fi
 # to exit (header, --take-over). Returns 3 after printing the reason that cycle
 # delivered before the stop landed, 0 once it stopped without delivering, and
 # 1 when it was not stopped (its handover state was unreadable, or it outlived
-# the stop window), which leaves it to the plain attach below.
+# the stall bound), which leaves it to the plain attach below.
 take_over_cycle() {  # <watcher-pid> <identity>
   local pid=$1 i owner_signal deadline
   cycle_begin "$pid" attached "$2"
@@ -576,15 +563,11 @@ take_over_cycle() {  # <watcher-pid> <identity>
   if attached_holder_live "$pid"; then
     kill -TERM "$pid" 2>/dev/null || true
   fi
-  deadline=$((SECONDS + TAKE_OVER_STOP_BOUND))
-  while fm_pid_alive "$pid" && [ "$SECONDS" -lt "$deadline" ]; do
-    sleep 0.1
-  done
-  # The stop is already in flight, so the death is guaranteed once the
-  # foreground operation the watcher is blocked on completes. A pane capture
-  # that outlives the stop window must not abandon the handover restore:
-  # keep waiting up to the stall bound, the age at which an attached arm
-  # stops following a live holder it did not signal.
+  # A TERM'd watcher exits only once its foreground poll sleep, event wait,
+  # or pane capture completes. Abandoning the stop before then skips the
+  # handover restore, and the dying watcher's downtime publication then
+  # re-announces an acknowledged episode, so wait up to the stall bound, the
+  # age at which an attached arm stops following a live holder.
   deadline=$((SECONDS + STALL_BOUND))
   while fm_pid_alive "$pid" && [ "$SECONDS" -lt "$deadline" ]; do
     sleep 0.1
