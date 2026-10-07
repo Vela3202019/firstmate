@@ -1269,7 +1269,7 @@ test_take_over_preserves_downtime_from_watcher_self_exit() {
 # stop can land seconds after the take-over kill. A --take-over that abandoned
 # the stop before that - the old fixed five-second window - never restored the
 # handover, so the dying watcher's downtime publication re-announced an episode
-# main already acknowledged, one wake per park, forever. The stop window must
+# main already acknowledged, one wake per park, forever. The stop wait must
 # cover the slowest legitimate poll block, and the fresh cycle must stay quiet.
 test_take_over_waits_out_a_slow_stop_and_keeps_the_episode_acknowledged() {
   local dir home state fakebin owner armout watcher i
@@ -1360,11 +1360,11 @@ SH
   pass "watch-arm: --take-over waits out a slow stop and keeps the acknowledged episode retired"
 }
 
-# A pane capture can outlive the take-over stop window (window = FM_POLL + 25;
-# here FM_POLL=1, so 26s, against a 30s capture). The stop is already in
-# flight, so the taking arm must keep waiting for the death up to the stall
-# bound and still restore the acknowledged episode instead of abandoning it.
-test_take_over_restores_after_a_capture_that_outlives_the_stop_window() {
+# A pane capture can run far past the watcher's poll interval (here FM_POLL=1
+# against a 30s capture). The stop is already in flight, so the taking arm
+# must keep waiting for the death up to the stall bound and still restore the
+# acknowledged episode instead of abandoning it.
+test_take_over_restores_after_a_capture_that_outlives_the_poll_interval() {
   local dir home state fakebin owner armout watcher i
   dir=$(make_case take-over-capture-outlives-window)
   home="$dir/home"
@@ -1373,8 +1373,8 @@ test_take_over_restores_after_a_capture_that_outlives_the_stop_window() {
   fakebin="$dir/fakebin"
   armout="$dir/arm.out"
 
-  # The seed watcher's first poll blocks ~30s inside its pane capture: the
-  # capture outlives the 26s stop window the take-over derives from FM_POLL=1.
+  # The seed watcher's first poll blocks ~30s inside its pane capture, far
+  # past its 1s poll interval.
   cat > "$fakebin/tmux" <<'SH'
 #!/usr/bin/env bash
 set -u
@@ -1427,8 +1427,8 @@ SH
     FM_ARM_CONFIRM_TIMEOUT=3 \
     "$WATCH_ARM" --take-over "$owner" > "$armout" &
   ARM_PID=$!
-  # The death lands seconds past the 26s stop window, so this ceiling must
-  # outlast the 30s capture plus the fresh-cycle confirmation.
+  # The death lands only when the 30s capture ends, so this ceiling must
+  # outlast it plus the fresh-cycle confirmation.
   i=0
   while [ "$i" -lt 1600 ]; do
     grep -q '^watcher: started pid=' "$armout" 2>/dev/null && break
@@ -1437,20 +1437,20 @@ SH
     i=$((i + 1))
   done
   grep -q '^watcher: started pid=' "$armout" \
-    || fail "--take-over did not own a fresh cycle after a capture that outlived the stop window: $(cat "$armout")"
+    || fail "--take-over did not own a fresh cycle after a capture that outlived the poll interval: $(cat "$armout")"
   ! is_live_non_zombie "$watcher" || fail "--take-over left the captured watcher running"
   case "$(cat "$state/.watcher-down" 2>/dev/null)" in
     acked:*) ;;
     *) fail "the outliving capture reopened an acknowledged episode: $(cat "$state/.watcher-down" 2>/dev/null)" ;;
   esac
   assert_not_contains "$(cat "$armout")" 'check: rearm-resurface' \
-    "a capture that outlives the stop window must not re-announce acknowledged downtime"
+    "a capture that outlives the poll interval must not re-announce acknowledged downtime"
   grep -q 'reason=taken-over	.*successor=started:' "$state/.watch-cycle-exits.log" \
     || fail "the lifecycle ledger does not link the outliving taken-over cycle to the one it started: $(cat "$state/.watch-cycle-exits.log")"
   kill -TERM "$ARM_PID" 2>/dev/null || true
   wait_for_exit "$ARM_PID" 50 >/dev/null 2>&1 || true
   wait "$owner" 2>/dev/null || true
-  pass "watch-arm: --take-over restores the acknowledged episode after a capture that outlives the stop window"
+  pass "watch-arm: --take-over restores the acknowledged episode after a capture that outlives the poll interval"
 }
 
 test_downtime_marker_does_not_follow_symlink() {
@@ -1804,4 +1804,4 @@ test_take_over_attaches_to_a_cycle_the_named_arm_does_not_own
 test_take_over_owns_a_fresh_cycle_and_keeps_queued_work_surfacing
 test_take_over_preserves_downtime_from_watcher_self_exit
 test_take_over_waits_out_a_slow_stop_and_keeps_the_episode_acknowledged
-test_take_over_restores_after_a_capture_that_outlives_the_stop_window
+test_take_over_restores_after_a_capture_that_outlives_the_poll_interval
