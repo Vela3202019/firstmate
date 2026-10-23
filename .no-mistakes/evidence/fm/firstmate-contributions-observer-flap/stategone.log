@@ -1,0 +1,44 @@
+[stategone +0s] lab home: /private/var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T/fm-lab.COfheC
+[stategone +0s] wake-queue lock held by pid 85781
+[stategone +1s] arm output: watcher: started pid=85850 (beacon fresh)
+[stategone +2s] state directory removed while watcher 85850 blocked at startup
+./drive-watcher.sh: line 36: 85781 Terminated: 15          ( . "$ROOT/bin/fm-wake-lib.sh"; fm_lock_try_acquire "$STATE/.wake-queue.lock" || exit 1; : > "$LAB/holding"; while [ ! -e "$LAB/release" ]; do
+    sleep 0.2;
+done; fm_lock_release "$STATE/.wake-queue.lock" )
+[stategone +2s] watcher alive after 0s: no
+[stategone +2s] watcher log lines: watcher: started pid=85850 (beacon fresh)
+watcher: exiting - state directory no longer exists: /private/var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T/fm-lab.COfheC/state
+[stategone +3s] lab removed: /private/var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T/fm-lab.COfheC
+[stategone +0s] lab home: /private/var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T/fm-lab.kqULel
+[stategone +0s] wake-queue lock held by pid 86570
+[stategone +1s] arm output: watcher: started pid=86685 (beacon fresh)
+[stategone +2s] state directory removed while watcher 86685 blocked at startup
+./drive-watcher.sh: line 36: 86570 Terminated: 15          ( . "$ROOT/bin/fm-wake-lib.sh"; fm_lock_try_acquire "$STATE/.wake-queue.lock" || exit 1; : > "$LAB/holding"; while [ ! -e "$LAB/release" ]; do
+    sleep 0.2;
+done; fm_lock_release "$STATE/.wake-queue.lock" )
+[stategone +2s] watcher alive after 0s: no
+[stategone +2s] watcher log lines: watcher: started pid=86685 (beacon fresh)
+watcher: exiting - state directory no longer exists: /private/var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T/fm-lab.kqULel/state
+[stategone +3s] lab removed: /private/var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T/fm-lab.kqULel
+[stategone +0s] lab home: /private/var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T/fm-lab.fG2GZX
+[stategone +0s] wake-queue lock held by pid 87583
+[stategone +1s] arm output: watcher: started pid=87679 (beacon fresh)
+[stategone +2s] state directory removed while watcher 87679 blocked at startup
+./drive-watcher.sh: line 36: 87583 Terminated: 15          ( . "$ROOT/bin/fm-wake-lib.sh"; fm_lock_try_acquire "$STATE/.wake-queue.lock" || exit 1; : > "$LAB/holding"; while [ ! -e "$LAB/release" ]; do
+    sleep 0.2;
+done; fm_lock_release "$STATE/.wake-queue.lock" )
+[stategone +2s] watcher alive after 0s: no
+[stategone +2s] watcher log lines: watcher: started pid=87679 (beacon fresh)
+watcher: exiting - state directory no longer exists: /private/var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T/fm-lab.fG2GZX/state
+[stategone +3s] lab removed: /private/var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T/fm-lab.fG2GZX
+[stategone +0s] lab home: /private/var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T/fm-lab.GREE0D
+[stategone +0s] wake-queue lock held by pid 88575
+[stategone +1s] arm output: watcher: started pid=88650 (beacon fresh)
+[stategone +2s] state directory removed while watcher 88650 blocked at startup
+./drive-watcher.sh: line 36: 88575 Terminated: 15          ( . "$ROOT/bin/fm-wake-lib.sh"; fm_lock_try_acquire "$STATE/.wake-queue.lock" || exit 1; : > "$LAB/holding"; while [ ! -e "$LAB/release" ]; do
+    sleep 0.2;
+done; fm_lock_release "$STATE/.wake-queue.lock" )
+[stategone +2s] watcher alive after 0s: no
+[stategone +2s] watcher log lines: watcher: started pid=88650 (beacon fresh)
+watcher: exiting - state directory no longer exists: /private/var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T/fm-lab.GREE0D/state
+[stategone +3s] lab removed: /private/var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T/fm-lab.GREE0D

@@ -1,0 +1,8 @@
+[wedged +1s] lab home: /private/var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T/fm-lab.xwsRPS
+[wedged +1s] wake-queue lock held by pid 91210
+[wedged +3s] watcher pid=91386 blocked; beacon age=1s lock pid=91386
+[wedged +5s] watcher exited rc=1 after ~4s; stderr: watcher: recovery state could not be reopened safely; retaining stale lock evidence
+[wedged +5s] lock evidence retained: pid file=91386
+[wedged +8s] beacon age 1s -> 4s (keeps growing = stale, no helper still beating)
+[wedged +9s] later arm (grace 3s) after hung holder released: watcher: started pid=93376 (beacon fresh)
+[wedged +10s] lab removed: /private/var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T/fm-lab.xwsRPS

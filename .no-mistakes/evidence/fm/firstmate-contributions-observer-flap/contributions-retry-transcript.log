@@ -1,0 +1,16 @@
+=== forge fault: retry-once (core read fails once with HTTP 502, then recovers)
+$ fm-contributions.sh poll
+exit=0 stdout: <empty - no unavailable wake>
+core reads made: 2
+record: {"checked_at":"2026-09-16T08:00:00Z","error":null}
+tests/.tmp-contrib-drive.sh: line 1910: /private/var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T/fm-contributions.cWRFVD/drive-retry-once/state/.wake-queue: No such file or directory
+wake-queue rows: 0
+
+=== forge fault: fail-persist (core read keeps failing with HTTP 502)
+$ fm-contributions.sh poll
+exit=0 stdout: contributions: observation unavailable for https://github.com/o/r/pull/8 - core read exited 1 with 19s of budget left: HTTP 502
+core reads made: 2
+record: {"checked_at":"2026-09-16T08:00:00Z","error":"forge observation unavailable: core read exited 1 with 19s of budget left: HTTP 502"}
+tests/.tmp-contrib-drive.sh: line 1910: /private/var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T/fm-contributions.cWRFVD/drive-fail-persist/state/.wake-queue: No such file or directory
+wake-queue rows: 0
+

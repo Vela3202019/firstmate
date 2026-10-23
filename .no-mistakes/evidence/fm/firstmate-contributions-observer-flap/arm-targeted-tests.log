@@ -1,0 +1,6 @@
+ok - watch-arm: a watcher blocked at startup on the wake-queue lock is confirmed and attached, never refused as stale
+ok - watch-arm: a startup wedged on the wake-queue lock past the stall bound stops beating and refuses
+ok - watch-arm: a watcher exits when its state directory is removed
+ok - watch-arm: a watcher exits when its state directory is removed
+ok - watch-arm: a watcher exits when its state directory is removed
+ok - watch-arm: a watcher exits when its state directory is removed

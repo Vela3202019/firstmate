@@ -1,0 +1,9 @@
+ok - a transient first read failure is retried once and records a clean observation
+ok - a failure that survives the retry records the error and wakes once
+ok - a genuinely unavailable forge records an error and wakes once per failure episode
+ok - one HTTP 500 is retried once and a successful retry stays healthy
+jq: error (at /var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T//fm-contributions.DfmeqJ/after.json:1): null (null) cannot be matched, as it is not a string
+jq: error (at /var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T//fm-contributions.DfmeqJ/after.json:1): null (null) cannot be matched, as it is not a string
+ok - a URL owned by two tasks is observed once and every owner receives the result
+ok - rotation preserves timed-out records and refreshes every slow PR on successive cycles
+ok - a read killed at the five-second bound is budget refusal and stays silent

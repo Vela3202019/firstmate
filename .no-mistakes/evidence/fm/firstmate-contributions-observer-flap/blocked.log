@@ -1,0 +1,10 @@
+[blocked +0s] lab home: /private/var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T/fm-lab.m9tTWw
+[blocked +0s] wake-queue lock held by pid 78756
+[blocked +0s] arm A output: watcher: started pid=78809 (beacon fresh)
+[blocked +0s] lock pid=78809 pid-identity present=yes beacon age=0s
+[blocked +8s] after 8s more blocked (grace=3s, confirm=2s): watcher alive=yes beacon age=1s holder still holding=yes
+[blocked +9s] racing arm B output: watcher: attached pid=78809 (beacon 1s)
+[blocked +9s] no stale-heartbeat refusal
+[blocked +9s] released wake-queue lock
+[blocked +13s] watcher alive after release=yes beacon age=1s
+[blocked +14s] lab removed: /private/var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T/fm-lab.m9tTWw
