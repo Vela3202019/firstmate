@@ -1,0 +1,32 @@
+=== scenario: transient-failure (forge fault: retry-once)
+poll exit=0
+stdout: <empty - no wake>
+core PR reads (api repos/o/r/pulls/8): 2
+record: {"checked_at":"2026-09-16T08:00:00Z","error":null}
+/Users/vela/.no-mistakes/evidence/01M634NBRJ8GZ90X7HPZYBVJ4V/live-contributions-retry.sh: line 18: /private/var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T/fm-contributions.ZN6BS3/live-transient-failure/state/.wake-queue: No such file or directory
+wake-queue rows: 0
+
+=== scenario: persistent-failure (forge fault: fail-persist)
+poll exit=0
+stdout: contributions: observation unavailable for https://github.com/o/r/pull/8 - core read exited 1 with 20s of budget left: HTTP 502
+core PR reads (api repos/o/r/pulls/8): 2
+record: {"checked_at":"2026-09-16T08:00:00Z","error":"forge observation unavailable: core read exited 1 with 20s of budget left: HTTP 502"}
+/Users/vela/.no-mistakes/evidence/01M634NBRJ8GZ90X7HPZYBVJ4V/live-contributions-retry.sh: line 18: /private/var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T/fm-contributions.ZN6BS3/live-persistent-failure/state/.wake-queue: No such file or directory
+wake-queue rows: 0
+
+=== scenario: budget-cut-retry (forge fault: retry-budget)
+poll exit=0
+stdout: contributions: observation unavailable for https://github.com/o/r/pull/8 - core read exited 1 with 20s of budget left: gh: Not Found (HTTP 404)
+core PR reads (api repos/o/r/pulls/8): 2
+record: {"checked_at":"2026-09-16T08:00:00Z","error":"forge observation unavailable: core read exited 1 with 20s of budget left: gh: Not Found (HTTP 404)"}
+/Users/vela/.no-mistakes/evidence/01M634NBRJ8GZ90X7HPZYBVJ4V/live-contributions-retry.sh: line 18: /private/var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T/fm-contributions.ZN6BS3/live-budget-cut-retry/state/.wake-queue: No such file or directory
+wake-queue rows: 0
+
+=== scenario: open-episode (forge fault: fail-persist)
+poll exit=0
+stdout: <empty - no wake>
+core PR reads (api repos/o/r/pulls/8): 1
+record: {"checked_at":"2026-09-16T08:00:00Z","error":"forge observation unavailable: core read exited 1 with 20s of budget left: HTTP 502"}
+/Users/vela/.no-mistakes/evidence/01M634NBRJ8GZ90X7HPZYBVJ4V/live-contributions-retry.sh: line 18: /private/var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T/fm-contributions.ZN6BS3/live-open-episode/state/.wake-queue: No such file or directory
+wake-queue rows: 0
+

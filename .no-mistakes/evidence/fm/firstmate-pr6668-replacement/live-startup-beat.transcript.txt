@@ -1,0 +1,13 @@
+== [t=0] foreign process holds state/.wake-queue.lock
+== first arm output:
+watcher: started pid=82186 (beacon fresh)
+== [t~7s, past 3s grace] state files:
+-rw-r--r--@ 1 vela  staff    6 Oct 28 23:36 .watcher-startup-beat
+startup-beat names pid: 82186
+lock pid: 82186
+== racing arm (FM_GUARD_GRACE=3):
+watcher: attached pid=82186 (beacon 0s)
+== releasing wake-queue lock; watcher should finish startup and poll
+-rw-r--r--@  1 vela  staff     0 Oct 28 23:36 .last-heartbeat
+-rw-r--r--@  1 vela  staff     0 Oct 28 23:36 .last-watcher-beat
+startup beat removed after startup finished

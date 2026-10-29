@@ -1,0 +1,22 @@
+[23:56:56] lab home: /private/var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T/fm-lab.xDuzrN
+=== Scenario A: watcher blocked at startup on the wake-queue lock
+[23:56:56] wake-queue lock held by pid 2139 (simulated long drain)
+[23:56:59] first arm output:
+    watcher: started pid=2281 (beacon fresh)
+[23:57:03] after 7s blocked (guard grace=3s):
+    .watch.lock/pid = 2281
+    .watcher-startup-beat = 2281 age=1s
+    .last-watcher-beat exists? no
+[23:57:05] racing arm output:
+    watcher: attached pid=2281 (beacon 1s)
+[23:57:09] after releasing the lock:
+    .watcher-startup-beat exists? no
+    .last-watcher-beat exists? yes (age 0s, real poll)
+    stop: watcher: stopped pid=2281
+=== Scenario B: startup wedged past the stall bound (3s) goes stale and refuses
+[23:57:16] watcher exited rc=1 after 3s; stderr:
+    watcher: recovery state could not be reopened safely; retaining stale lock evidence
+    lock pid retained = 7863 (watcher was 7863)
+    .watcher-startup-beat exists? no
+    .last-watcher-beat exists? no
+[23:57:16] lab removed

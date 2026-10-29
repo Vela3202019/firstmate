@@ -1,0 +1,8 @@
+== [t=0] hung foreign holder owns state/.wake-queue.lock; starting watcher with FM_WATCHER_STALL_BOUND=4
+[t=2s] startup beat: 72153 (watcher pid 72153)
+== watcher exited rc=1 after 4s; stderr:
+watcher: recovery state could not be reopened safely; retaining stale lock evidence
+lock pid retained: 72153
+startup beat after refusal: absent
+poll beat (.last-watcher-beat): absent
+fm_watcher_healthy now: NOT-healthy

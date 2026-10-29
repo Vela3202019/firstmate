@@ -1,0 +1,23 @@
+lab home: /private/var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T/fm-lab.LfVelu
+=== Scenario C: one transient 502 on the core read, then the real forge answers  (injected fault: once)
+    poll exit=0
+    poll stdout/stderr (a wake line means the primary is woken): contribution-wake: check: contributions delivery cf6982bd6fd63778e9770be017ab0cc14b76508b57413cb25d5579afbf905fb2
+contribution-wake: check: contributions delivery fb2e4a973b4bfebb98ac10a9f5fef0f966a07963e5d1756a7187e337418677cc
+    core PR reads (api repos/kunchenguid/firstmate/pulls/6668): 2   total gh calls: 9
+    record: {"checked_at":"2026-10-29T06:57:43Z","error":null,"head":"a3c21fe2ec8b4e47ce3ed016c65a43fc9c2b53e3","state":"open"}
+=== Scenario D: forge stays down through the retry (first failure of an episode)  (injected fault: always)
+    poll exit=0
+    poll stdout/stderr (a wake line means the primary is woken): contributions: observation unavailable for https://github.com/kunchenguid/firstmate/pull/6668 - core read exited 1 with 20s of budget left: gh: Bad Gateway (HTTP 502)
+    core PR reads (api repos/kunchenguid/firstmate/pulls/6668): 4   total gh calls: 4
+    record: {"checked_at":"2026-10-29T06:57:46Z","error":"forge observation unavailable: core read exited 1 with 20s of budget left: gh: Bad Gateway (HTTP 502)","head":"a3c21fe2ec8b4e47ce3ed016c65a43fc9c2b53e3","state":"open"}
+=== Scenario E: forge still down, failure episode already open  (injected fault: always)
+    poll exit=0
+    poll stdout/stderr (a wake line means the primary is woken): <empty>
+    core PR reads (api repos/kunchenguid/firstmate/pulls/6668): 2   total gh calls: 2
+    record: {"checked_at":"2026-10-29T06:57:46Z","error":"forge observation unavailable: core read exited 1 with 20s of budget left: gh: Bad Gateway (HTTP 502)","head":"a3c21fe2ec8b4e47ce3ed016c65a43fc9c2b53e3","state":"open"}
+=== Scenario F: forge recovers  (injected fault: none)
+    poll exit=0
+    poll stdout/stderr (a wake line means the primary is woken): <empty>
+    core PR reads (api repos/kunchenguid/firstmate/pulls/6668): 1   total gh calls: 8
+    record: {"checked_at":"2026-10-29T06:57:46Z","error":null,"head":"a3c21fe2ec8b4e47ce3ed016c65a43fc9c2b53e3","state":"open"}
+lab removed
