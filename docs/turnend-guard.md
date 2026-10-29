@@ -210,7 +210,7 @@ With `state/.afk` absent the daemon lock proves nothing and the strict watcher p
 `bin/fm-watch.sh` touches `state/.last-watcher-beat` once per cycle at the top of the poll loop.
 A healthy watcher's beacon can therefore legitimately age up to `FM_POLL` seconds between touches.
 A watcher still blocked in its startup recovery-marker transitions has not polled yet, so from the moment it claims the singleton lock until those transitions finish it beats `state/.watcher-startup-beat` every second instead, naming its own pid.
-Only the live identity-matched holder checks (`fm_watcher_healthy` and the re-arm lock takeover in `bin/fm-watch.sh`) accept that startup beacon, so a startup never passes for a completed poll.
+Only checks that already know the live identity-matched lock holder read that startup beacon, through `fm_watcher_beat_age` in `bin/fm-wake-lib.sh`, so a startup never passes for a completed poll.
 The startup beat and both transitions' lock waits share one window that ends at the watcher stall bound, so a wedged startup still goes stale.
 
 A fixed 300-second grace default stops correctly bounding staleness once a home's `FM_POLL` reaches or exceeds it.
