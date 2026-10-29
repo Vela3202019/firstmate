@@ -110,7 +110,7 @@ The stale-owner claim occurs only after the existing AFK and supervision-need ga
 ### Claude arm failures
 
 After each non-actionable arm close, the hook rechecks the identity-matched watcher lock and fresh beacon before retrying a bounded number of times.
-The beacon is `state/.last-watcher-beat`, which only the watcher process touches.
+The beacon is `state/.last-watcher-beat`, which only the watcher process touches, or the startup beacon while the watcher has not polled yet, as [`turnend-guard.md`](turnend-guard.md#guard-grace-and-the-poll-cadence) owns.
 
 - A cycle-end failure is benign when that live-watcher predicate is true.
   In that case the hook suppresses the arm output and continues silently.
