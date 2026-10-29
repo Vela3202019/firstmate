@@ -3515,9 +3515,9 @@ watcher_cleanup() {
   fm_capture_output_cleanup
   fm_wait_tmp_cleanup
   fm_custom_check_snapshot_cleanup
-  # A stop during the startup transitions ends the startup beat before the
-  # lock is released, so no beacon outlives this watcher.
-  [ -z "${STARTUP_BEAT_PID:-}" ] || stop_startup_beat
+  # A stop during the startup transitions removes this watcher's startup
+  # beacon before the lock is released, so no beacon outlives it.
+  [ -z "${STARTUP_BEAT:-}" ] || clear_startup_beat
   if [ "$owns_lock" -eq 1 ] \
     && ! fm_recovery_transition "$WATCHER_DOWNTIME_MARKER" "$transition" "$WATCH_LOCK" \
       downtime "$CLEANUP_LOCK_BOUND"; then
@@ -3566,30 +3566,22 @@ exit_if_world_gone() {
     exit 1
   fi
 }
-# From the moment the lock identity is published until the recovery-marker
-# transitions below finish, beat a startup beacon naming this pid: they wait on
-# the wake-queue lock a long drain holds, and a live watcher held there must
-# read to a racing arm and the guard as a healthy identity-matched holder
-# (fm_watcher_beat_age), not a stale-heartbeat one. It is not the poll beacon,
-# so a startup never passes for a completed poll. The beat and both
-# transitions share one deadline at the stall bound, so a startup wedged behind
+# While the recovery-marker transitions below wait on a held lock (the
+# wake-queue lock a long drain holds), this watcher itself beats a startup
+# beacon naming its pid from inside those waits (fm_lock_acquire_wait_max), so
+# a live watcher held there reads to a racing arm and the guard as a healthy
+# identity-matched holder (fm_watcher_beat_age), not a stale-heartbeat one. No
+# separate process beats it, so a frozen or wedged watcher's beacon ages out.
+# It is not the poll beacon, so a startup never passes for a completed poll.
+# The waits share one deadline at the stall bound, so a startup wedged behind
 # a hung holder goes stale and refuses rather than looking supervised. Their
 # refusals keep the stale lock evidence, so they leave without the cleanup
 # trap, unless the state was torn down under the wait.
 STARTUP_BEAT="$STATE/.watcher-startup-beat"
-stop_startup_beat() {
-  kill "$STARTUP_BEAT_PID" 2>/dev/null || true
-  wait "$STARTUP_BEAT_PID" 2>/dev/null || true
-  STARTUP_BEAT_PID=
+clear_startup_beat() {
   [ "$(cat "$STARTUP_BEAT" 2>/dev/null || true)" != "$WATCHER_PID" ] || rm -f "$STARTUP_BEAT"
 }
 STARTUP_DEADLINE=$((SECONDS + WATCHER_STALL_BOUND))
-printf '%s\n' "$WATCHER_PID" > "$STARTUP_BEAT" 2>/dev/null || true
-( while fm_pid_alive "$WATCHER_PID" && [ "$SECONDS" -lt "$STARTUP_DEADLINE" ]; do
-    touch "$STARTUP_BEAT"
-    sleep 1
-  done ) </dev/null >/dev/null 2>&1 &
-STARTUP_BEAT_PID=$!
 WATCHER_RECOVERY_PENDING=0
 if [ -n "${FM_LOCK_RECOVERED_PID:-}" ]; then
   WATCHER_RECOVERY_PENDING=1
@@ -3597,8 +3589,8 @@ fi
 if [ "${FM_WATCH_HANDLING_SUCCESSOR:-0}" != 1 ] \
   && [ "${FM_WATCH_FOREGROUND_CHECKPOINT:-0}" != 1 ]; then
   if ! fm_recovery_marker_reopen_announced "$WATCHER_DOWNTIME_MARKER" \
-    "$(( STARTUP_DEADLINE > SECONDS ? STARTUP_DEADLINE - SECONDS : 0 ))"; then
-    stop_startup_beat
+    "$(( STARTUP_DEADLINE > SECONDS ? STARTUP_DEADLINE - SECONDS : 0 ))" "$STARTUP_BEAT"; then
+    clear_startup_beat
     exit_if_world_gone
     trap - EXIT
     echo "watcher: recovery state could not be reopened safely; retaining stale lock evidence" >&2
@@ -3606,14 +3598,14 @@ if [ "${FM_WATCH_HANDLING_SUCCESSOR:-0}" != 1 ] \
   fi
 fi
 if ! fm_recovery_marker_arm_check "$WATCHER_DOWNTIME_MARKER" \
-  "$(( STARTUP_DEADLINE > SECONDS ? STARTUP_DEADLINE - SECONDS : 0 ))"; then
-  stop_startup_beat
+  "$(( STARTUP_DEADLINE > SECONDS ? STARTUP_DEADLINE - SECONDS : 0 ))" "$STARTUP_BEAT"; then
+  clear_startup_beat
   exit_if_world_gone
   trap - EXIT
   echo "watcher: recovery state could not be consumed safely; retaining stale lock evidence" >&2
   exit 1
 fi
-stop_startup_beat
+clear_startup_beat
 if [ "${FM_WATCH_HANDLING_SUCCESSOR:-0}" = 1 ]; then
   WATCHER_RECOVERY_PENDING=0
 elif [ "$FM_RECOVERY_MARKER_ACTION" = recover ]; then

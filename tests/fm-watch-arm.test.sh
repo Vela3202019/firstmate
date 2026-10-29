@@ -627,7 +627,6 @@ test_stopped_startup_ends_its_beat() {
     || { : > "$dir/release"; fail "watcher never began its startup beat: $(cat "$err")"; }
   sleep 1
   children=$(pgrep -P "$pid" || true)
-  [ -n "$children" ] || { : > "$dir/release"; fail 'watcher had no startup beat helper'; }
   kill -TERM "$pid" 2>/dev/null || { : > "$dir/release"; fail 'could not stop the starting watcher'; }
   wait_for_exit "$pid" 100 || true
   is_live_non_zombie "$pid" && { : > "$dir/release"; fail 'stopped watcher did not exit'; }
@@ -640,6 +639,66 @@ test_stopped_startup_ends_its_beat() {
   : > "$dir/release"
   wait "$holder" 2>/dev/null || true
   pass "watch-arm: a watcher stopped during its startup lock wait ends its startup beat"
+}
+
+# Only the watcher's own startup progress beats the startup beacon: a watcher
+# frozen (SIGSTOP) during a startup lock wait leaves it to age out, so the
+# beacon never vouches for a holder that is not running.
+test_frozen_startup_watcher_goes_stale() {
+  local dir home state fakebin holder out err pid i age
+  dir=$(make_case frozen-startup)
+  home="$dir/home"
+  state="$dir/state"
+  fakebin="$dir/fakebin"
+  out="$dir/watch.out"
+  err="$dir/watch.err"
+  mkdir -p "$home/data"
+  FM_HOME="$home" FM_STATE_OVERRIDE="$state" bash -c '
+    . "$1"
+    fm_lock_try_acquire "$2/.wake-queue.lock" || exit 1
+    : > "$3/holding"
+    i=0
+    while [ "$i" -lt 600 ] && [ ! -e "$3/release" ]; do
+      sleep 0.1
+      i=$((i + 1))
+    done
+    fm_lock_release "$2/.wake-queue.lock" || true
+  ' _ "$ROOT/bin/fm-wake-lib.sh" "$state" "$dir" &
+  holder=$!
+  i=0
+  while [ "$i" -lt 50 ] && [ ! -e "$dir/holding" ]; do
+    sleep 0.1
+    i=$((i + 1))
+  done
+  [ -e "$dir/holding" ] || fail 'lock holder did not take the wake-queue lock'
+
+  PATH="$fakebin:$PATH" FM_HOME="$home" FM_STATE_OVERRIDE="$state" \
+    FM_POLL=1 FM_SIGNAL_GRACE=0 FM_CHECK_INTERVAL=999999 FM_HEARTBEAT=999999 \
+    FM_WATCHER_STALL_BOUND=60 "$WATCH" > "$out" 2> "$err" &
+  pid=$!
+  i=0
+  while [ "$i" -lt 100 ] && [ "$(cat "$state/.watcher-startup-beat" 2>/dev/null || true)" != "$pid" ]; do
+    sleep 0.1
+    i=$((i + 1))
+  done
+  [ "$(cat "$state/.watcher-startup-beat" 2>/dev/null || true)" = "$pid" ] \
+    || { : > "$dir/release"; fail "watcher never began its startup beat: $(cat "$err")"; }
+  kill -STOP "$pid" 2>/dev/null || { : > "$dir/release"; fail 'could not freeze the starting watcher'; }
+  sleep 3
+  age=$(FM_STATE_OVERRIDE="$state" bash -c '. "$1"; fm_path_age "$2"' _ "$ROOT/bin/fm-wake-lib.sh" "$state/.watcher-startup-beat")
+  if FM_HOME="$home" FM_STATE_OVERRIDE="$state" bash -c '. "$1"; fm_watcher_healthy "$2" "$3" 2 "$4"' \
+    _ "$ROOT/bin/fm-wake-lib.sh" "$state" "$WATCH" "$home"; then
+    kill -CONT "$pid" 2>/dev/null || true
+    : > "$dir/release"
+    fail "a watcher frozen during its startup lock wait was classified healthy (startup beacon ${age}s old)"
+  fi
+  [ "$age" -ge 2 ] || { kill -CONT "$pid" 2>/dev/null || true; : > "$dir/release"; fail "the startup beacon kept advancing while its watcher was frozen (${age}s old)"; }
+  kill -CONT "$pid" 2>/dev/null || true
+  kill -TERM "$pid" 2>/dev/null || true
+  wait_for_exit "$pid" 100 || true
+  : > "$dir/release"
+  wait "$holder" 2>/dev/null || true
+  pass "watch-arm: a watcher frozen during its startup lock wait lets its startup beacon go stale"
 }
 
 test_rearm_resurfaces_durable_queue_and_remote_open_decision() {
@@ -2224,6 +2283,7 @@ test_arm_confirms_a_watcher_blocked_on_the_wake_queue_lock
 test_wedged_startup_goes_stale_at_the_stall_bound
 test_startup_lock_waits_share_one_stall_bound
 test_stopped_startup_ends_its_beat
+test_frozen_startup_watcher_goes_stale
 test_rearm_resurfaces_durable_queue_and_remote_open_decision
 test_slow_rearm_recovery_is_still_surfaced
 test_marker_publish_failure_retains_recovery_evidence
