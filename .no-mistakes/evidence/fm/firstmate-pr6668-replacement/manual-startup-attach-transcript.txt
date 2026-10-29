@@ -1,0 +1,9 @@
+## disposable marked lab home (bin/fm-lab-home.sh create); a helper holds state/.wake-queue.lock to simulate a long drain
+## $ bin/fm-watch-arm.sh   (arm #1; FM_GUARD_GRACE=3 FM_ARM_CONFIRM_TIMEOUT=2 FM_WATCHER_STALL_BOUND=60)
+watcher: started pid=67531 (beacon fresh)
+## 8s later (past the 3s grace), watcher still blocked in its startup transitions:
+state/.watcher-startup-beat = 67531   state/.last-watcher-beat exists? no
+## $ bin/fm-watch-arm.sh   (arm #2 races in)
+watcher: attached pid=67531 (beacon 0s)
+## kill -TERM watcher pid=67531 while still blocked
+watcher alive? no; startup beacon exists after stop? no
