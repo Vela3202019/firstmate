@@ -458,11 +458,13 @@ test_arm_confirms_a_watcher_blocked_on_the_wake_queue_lock() {
     || fail "racing arm did not attach to the blocked watcher: $(cat "$raceout")"
   ! grep -qF 'heartbeat is stale' "$raceout" \
     || fail "racing arm refused the blocked watcher as stale: $(cat "$raceout")"
+  grep -qE "^watcher: attached pid=$watch_pid \(beacon [0-2]s\)$" "$raceout" \
+    || fail "racing arm did not report the startup beacon's age: $(cat "$raceout")"
 
   PATH="$fakebin:$PATH" FM_HOME="$home" FM_STATE_OVERRIDE="$state" "$WATCH_ARM" --stop >/dev/null 2>&1 || true
   wait_for_exit "$race_pid" 100 >/dev/null 2>&1 || true
   wait_for_exit "$ARM_PID" 100 >/dev/null 2>&1 || true
-  pass "watch-arm: a watcher blocked at startup on the wake-queue lock is confirmed and attached, never refused as stale"
+  pass "watch-arm: a watcher blocked at startup on the wake-queue lock is confirmed and attached with its startup beacon age, never refused as stale"
 }
 
 # The startup beat is not unconditional: a watcher still wedged behind a hung

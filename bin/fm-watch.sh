@@ -3679,8 +3679,7 @@ resurface_after_downtime() {
     wake "check: rearm-resurface"
   fi
   if [ "$WATCHER_RECOVERY_PENDING" -ne 1 ]; then
-    if ! fm_recovery_marker_arm_check "$WATCHER_DOWNTIME_MARKER" "$WATCHER_STALL_BOUND"; then
-      exit_if_world_gone
+    if ! fm_recovery_marker_arm_check "$WATCHER_DOWNTIME_MARKER"; then
       echo "watcher: recovery state could not be consumed safely" >&2
       exit 1
     fi
@@ -3752,10 +3751,8 @@ while :; do
   # missing secondmate endpoint is relaunched here on a bounded cadence, which
   # is also what unsticks that mate's foreign wake queue. The tick's single
   # wake exits the cycle like every other wake, so its marker is stamped before
-  # any relaunch and the restarted watcher will not re-probe early. A state
-  # directory torn down mid-cycle fails these ticks; report it as such.
+  # any relaunch and the restarted watcher will not re-probe early.
   secondmate_liveness_tick || {
-    exit_if_world_gone
     echo "watcher: secondmate liveness check failed" >&2
     exit 1
   }
@@ -3764,7 +3761,6 @@ while :; do
   # Observe the foreign queue before the rest of this cycle so an aged row wakes
   # the parent without consuming or rewriting the receiving home's record.
   secondmate_wake_stall_tick || {
-    exit_if_world_gone
     echo "watcher: secondmate wake-loop observation failed" >&2
     exit 1
   }

@@ -1492,14 +1492,14 @@ fm_lock_acquire_wait() {
 # cleanup: a live foreign holder must not let one TERM strand the watcher in
 # its trap, so the wait gives up after <seconds> and leaves the ordinary
 # stale-owner evidence for the next acquirer to reclaim. A lock whose parent
-# directory is gone (a torn-down state directory) can never be taken, so the
-# wait gives up at once rather than spinning out the bound.
+# directory is gone (a torn-down state directory, fm_lock_parent_gone) can
+# never be taken, so the wait gives up then rather than spinning out the bound.
 fm_lock_acquire_wait_max() {  # <lockdir> <max-seconds>
   local lockdir=$1 seconds=$2 deadline
   deadline=$((SECONDS + seconds))
   while ! fm_lock_try_acquire "$lockdir"; do
     [ "$SECONDS" -lt "$deadline" ] || return 1
-    [ -d "$(dirname "$lockdir")" ] || return 1
+    ! fm_lock_parent_gone "$lockdir" || return 1
     sleep 0.1
   done
 }
