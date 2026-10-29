@@ -1,0 +1,7 @@
+ok - watch-arm: a watcher blocked at startup on the wake-queue lock is confirmed and attached with its startup beacon age, never refused as stale
+ok - watch-arm: a startup wedged on the wake-queue lock past the stall bound stops beating and refuses
+ok - watch-arm: the startup lock waits share one stall-bound window
+ok - watch-arm: a watcher stopped during its startup lock wait ends its startup beat
+ok - watch-arm: an attached arm keeps following a slow live holder and reports its wake
+ok - watch-arm: a re-arm whose recovery cycle runs slowly still surfaces it
+exit 0

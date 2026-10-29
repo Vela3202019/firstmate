@@ -1,0 +1,10 @@
+ok - an HTTP 404 wakes once after one observation retry, without a forge-level retry
+ok - one HTTP 500 is retried once and a successful retry stays healthy
+ok - two transient failures wake once and name the failed read in the record
+ok - a transient first read failure is retried once and records a clean observation
+ok - a failure that survives the retry records the error and wakes once
+ok - a retry the budget cuts off keeps the first genuine failure and wakes once
+ok - a URL whose failure episode is already open is not retried
+ok - a genuinely unavailable forge records an error and wakes once per failure episode
+ok - a genuine forge failure inside the budget still records the error, its cause and wakes
+exit 0

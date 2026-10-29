@@ -1,0 +1,28 @@
+
+### Scenario A: arm a watcher while a long drain holds the wake-queue lock
+wake-queue lock held by pid 12776
+first arm output:
+watcher: started pid=12834 (beacon fresh)
+after 6s (> 3s grace) still blocked at startup:
+  startup beacon contents: 12834  age: 1s
+  poll beacon .last-watcher-beat exists? no
+  fm_watcher_beat_age for pid 12834: 1
+
+### Scenario B: a racing second arm attaches (not 'stale') and reports the real startup beacon age
+watcher: attached pid=12834 (beacon 0s)
+
+### Scenario C: stop the watcher (TERM) while it is still in its startup wait
+watcher children before TERM (incl. startup beat helper): 12986 
+watcher 12834 exited
+  child 12986 alive after stop? no
+startup beacon after stop: removed
+
+### Scenario D: a startup wedged behind a hung holder goes stale at the stall bound and refuses
+watcher pid=17312 started; waiting for it to give up
+watcher alive after 5s? no
+startup beacon: removed;  poll beacon .last-watcher-beat: absent
+watcher log tail:
+watcher: recovery state could not be reopened safely; retaining stale lock evidence
+fm_watcher_beat_age for 17312: 999999
+
+lab removed: yes

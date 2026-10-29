@@ -1,0 +1,24 @@
+lab home: /private/var/folders/32/ng_xnctn3dj29mxdt024s0cc0000gn/T/fm-lab.BR5e4e
+=== Scenario G1 (budget 18s): a slow failing first read leaves <15s, so no retry starts  (injected fault: slowfail)
+    poll started 1793297380, took 5s
+    poll exit=0
+    poll stdout/stderr (a wake line means the primary is woken): contributions: observation unavailable for https://github.com/kunchenguid/firstmate/pull/6668 - core read exited 1 with 14s of budget left: gh: Bad Gateway (HTTP 502)
+    core PR reads (api repos/kunchenguid/firstmate/pulls/6668): 2   total gh calls: 2
+    record: {"checked_at":"2026-10-29T18:09:40Z","error":"forge observation unavailable: core read exited 1 with 14s of budget left: gh: Bad Gateway (HTTP 502)","head":null,"state":null}
+    timestamped gh calls:
+      1793297380 pid=42923 ppid=42922 api repos/kunchenguid/firstmate/pulls/6668
+      1793297384 end pid=42923 rc=0
+      1793297384 pid=45209 ppid=45206 api repos/kunchenguid/firstmate/pulls/6668
+      1793297385 end pid=45209 rc=0
+=== Scenario G2 (budget 20s): first read 404s, the retry hangs and is killed at the read bound  (injected fault: failhang)
+    poll started 1793297385, took 6s
+    poll exit=0
+    poll stdout/stderr (a wake line means the primary is woken): contributions: observation unavailable for https://github.com/kunchenguid/firstmate/pull/6668 - core read exited 1 with 20s of budget left: gh: Not Found (HTTP 404)
+    core PR reads (api repos/kunchenguid/firstmate/pulls/6668): 2   total gh calls: 2
+    record: {"checked_at":"2026-10-29T18:09:45Z","error":"forge observation unavailable: core read exited 1 with 20s of budget left: gh: Not Found (HTTP 404)","head":null,"state":null}
+    timestamped gh calls:
+      1793297386 pid=46816 ppid=46813 api repos/kunchenguid/firstmate/pulls/6668
+      1793297386 end pid=46816 rc=0
+      1793297386 pid=46871 ppid=46869 api repos/kunchenguid/firstmate/pulls/6668
+      1793297391 end pid=46871 rc=0
+lab removed
