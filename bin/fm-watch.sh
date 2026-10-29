@@ -3515,6 +3515,9 @@ watcher_cleanup() {
   fm_capture_output_cleanup
   fm_wait_tmp_cleanup
   fm_custom_check_snapshot_cleanup
+  # A stop during the startup transitions ends the startup beat before the
+  # lock is released, so no beacon outlives this watcher.
+  [ -z "${STARTUP_BEAT_PID:-}" ] || stop_startup_beat
   if [ "$owns_lock" -eq 1 ] \
     && ! fm_recovery_transition "$WATCHER_DOWNTIME_MARKER" "$transition" "$WATCH_LOCK" \
       downtime "$CLEANUP_LOCK_BOUND"; then
@@ -3574,6 +3577,12 @@ exit_if_world_gone() {
 # refusals keep the stale lock evidence, so they leave without the cleanup
 # trap, unless the state was torn down under the wait.
 STARTUP_BEAT="$STATE/.watcher-startup-beat"
+stop_startup_beat() {
+  kill "$STARTUP_BEAT_PID" 2>/dev/null || true
+  wait "$STARTUP_BEAT_PID" 2>/dev/null || true
+  STARTUP_BEAT_PID=
+  [ "$(cat "$STARTUP_BEAT" 2>/dev/null || true)" != "$WATCHER_PID" ] || rm -f "$STARTUP_BEAT"
+}
 STARTUP_DEADLINE=$((SECONDS + WATCHER_STALL_BOUND))
 printf '%s\n' "$WATCHER_PID" > "$STARTUP_BEAT" 2>/dev/null || true
 ( while fm_pid_alive "$WATCHER_PID" && [ "$SECONDS" -lt "$STARTUP_DEADLINE" ]; do
@@ -3581,11 +3590,6 @@ printf '%s\n' "$WATCHER_PID" > "$STARTUP_BEAT" 2>/dev/null || true
     sleep 1
   done ) </dev/null >/dev/null 2>&1 &
 STARTUP_BEAT_PID=$!
-stop_startup_beat() {
-  kill "$STARTUP_BEAT_PID" 2>/dev/null || true
-  wait "$STARTUP_BEAT_PID" 2>/dev/null || true
-  rm -f "$STARTUP_BEAT"
-}
 WATCHER_RECOVERY_PENDING=0
 if [ -n "${FM_LOCK_RECOVERED_PID:-}" ]; then
   WATCHER_RECOVERY_PENDING=1

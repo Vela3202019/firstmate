@@ -583,6 +583,65 @@ test_startup_lock_waits_share_one_stall_bound() {
   pass "watch-arm: the startup lock waits share one stall-bound window"
 }
 
+# A watcher stopped while its startup transitions wait on the wake-queue lock
+# ends its startup beat on the way out: the beat helper is gone and no startup
+# beacon outlives the watcher.
+test_stopped_startup_ends_its_beat() {
+  local dir home state fakebin holder out err pid i children child
+  dir=$(make_case stopped-startup)
+  home="$dir/home"
+  state="$dir/state"
+  fakebin="$dir/fakebin"
+  out="$dir/watch.out"
+  err="$dir/watch.err"
+  mkdir -p "$home/data"
+  FM_HOME="$home" FM_STATE_OVERRIDE="$state" bash -c '
+    . "$1"
+    fm_lock_try_acquire "$2/.wake-queue.lock" || exit 1
+    : > "$3/holding"
+    i=0
+    while [ "$i" -lt 600 ] && [ ! -e "$3/release" ]; do
+      sleep 0.1
+      i=$((i + 1))
+    done
+    fm_lock_release "$2/.wake-queue.lock" || true
+  ' _ "$ROOT/bin/fm-wake-lib.sh" "$state" "$dir" &
+  holder=$!
+  i=0
+  while [ "$i" -lt 50 ] && [ ! -e "$dir/holding" ]; do
+    sleep 0.1
+    i=$((i + 1))
+  done
+  [ -e "$dir/holding" ] || fail 'lock holder did not take the wake-queue lock'
+
+  PATH="$fakebin:$PATH" FM_HOME="$home" FM_STATE_OVERRIDE="$state" \
+    FM_POLL=1 FM_SIGNAL_GRACE=0 FM_CHECK_INTERVAL=999999 FM_HEARTBEAT=999999 \
+    FM_WATCHER_STALL_BOUND=30 "$WATCH" > "$out" 2> "$err" &
+  pid=$!
+  i=0
+  while [ "$i" -lt 100 ] && [ "$(cat "$state/.watcher-startup-beat" 2>/dev/null || true)" != "$pid" ]; do
+    sleep 0.1
+    i=$((i + 1))
+  done
+  [ "$(cat "$state/.watcher-startup-beat" 2>/dev/null || true)" = "$pid" ] \
+    || { : > "$dir/release"; fail "watcher never began its startup beat: $(cat "$err")"; }
+  sleep 1
+  children=$(pgrep -P "$pid" || true)
+  [ -n "$children" ] || { : > "$dir/release"; fail 'watcher had no startup beat helper'; }
+  kill -TERM "$pid" 2>/dev/null || { : > "$dir/release"; fail 'could not stop the starting watcher'; }
+  wait_for_exit "$pid" 100 || true
+  is_live_non_zombie "$pid" && { : > "$dir/release"; fail 'stopped watcher did not exit'; }
+  sleep 2
+  for child in $children; do
+    is_live_non_zombie "$child" && { : > "$dir/release"; fail "startup beat helper pid $child outlived its watcher"; }
+  done
+  [ ! -e "$state/.watcher-startup-beat" ] \
+    || { : > "$dir/release"; fail 'the startup beacon outlived the stopped watcher'; }
+  : > "$dir/release"
+  wait "$holder" 2>/dev/null || true
+  pass "watch-arm: a watcher stopped during its startup lock wait ends its startup beat"
+}
+
 test_rearm_resurfaces_durable_queue_and_remote_open_decision() {
   local dir home state fakebin result armout drainout status watcher_pid sequence generation decision_recovery_arm decision_successor
   dir=$(make_case rearm-resurface)
@@ -2164,6 +2223,7 @@ test_attached_arm_hands_a_stalled_holder_to_its_replacement
 test_arm_confirms_a_watcher_blocked_on_the_wake_queue_lock
 test_wedged_startup_goes_stale_at_the_stall_bound
 test_startup_lock_waits_share_one_stall_bound
+test_stopped_startup_ends_its_beat
 test_rearm_resurfaces_durable_queue_and_remote_open_decision
 test_slow_rearm_recovery_is_still_surfaced
 test_marker_publish_failure_retains_recovery_evidence
